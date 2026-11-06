@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::Read as _;
 use std::sync::OnceLock;
 use std::time::Duration;
 

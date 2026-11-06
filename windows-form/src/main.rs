@@ -22,7 +22,7 @@ fn main() -> eframe::Result<()> {
 
     let icon = {
         use image::GenericImageView;
-        let img = image::load_from_memory(include_bytes!("../assets/icon.png")).ok();
+        let img = image::load_from_memory(include_bytes!("../assets/icon.ico")).ok();
         img.map(|img| {
             let (w, h) = img.dimensions();
             egui::IconData { rgba: img.into_rgba8().into_raw(), width: w, height: h }

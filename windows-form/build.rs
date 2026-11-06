@@ -8,19 +8,9 @@ fn main() {
     let rc_path  = std::path::Path::new(&out_dir).join("app.rc");
     let res_path = std::path::Path::new(&out_dir).join("app.res");
 
-    // Wrap icon.png bytes inside a minimal ICO container (single image, PNG data)
-    let png = std::fs::read("assets/icon.png").expect("assets/icon.png not found");
-    let png_size = png.len() as u32;
-    let offset: u32 = 6 + 16; // ICONDIR(6) + ICONDIRENTRY(16)
-    let mut ico: Vec<u8> = Vec::with_capacity(offset as usize + png.len());
-    // ICONDIR
-    ico.extend_from_slice(&[0u8, 0, 1, 0, 1, 0]); // reserved=0, type=1, count=1
-    // ICONDIRENTRY (width=0→256, height=0→256, colorcount=0, reserved=0, planes=1, bitcount=32)
-    ico.extend_from_slice(&[0, 0, 0, 0, 1, 0, 32, 0]);
-    ico.extend_from_slice(&png_size.to_le_bytes());
-    ico.extend_from_slice(&offset.to_le_bytes());
-    ico.extend_from_slice(&png);
-    std::fs::write(&ico_path, &ico).expect("Cannot write icon.ico");
+    // Use the high-quality ICO file directly
+    let ico_src = std::path::Path::new("assets/icon.ico");
+    std::fs::copy(ico_src, &ico_path).expect("assets/icon.ico not found");
 
     // RC script (resource ID 1 = app icon Windows picks up automatically)
     let ico_str = ico_path.to_str().unwrap().replace('\\', "/");
@@ -33,7 +23,7 @@ fn main() {
         println!("cargo:rustc-link-arg={}", res_path.display());
     }
 
-    println!("cargo:rerun-if-changed=assets/icon.png");
+    println!("cargo:rerun-if-changed=assets/icon.ico");
     println!("cargo:rerun-if-changed=build.rs");
 }
 

@@ -1,7 +1,7 @@
 /// Lightweight HTTP server on localhost:6800.
 /// Browser extensions POST JSON to /add and the app picks it up via a channel.
 use serde::Deserialize;
-use std::io::Read;
+use std::io::Read as _;
 use std::sync::mpsc::Sender;
 
 pub const PORT: u16 = 6800;
@@ -16,6 +16,7 @@ pub struct AddRequest {
     #[serde(default)]
     pub referrer: String,
     #[serde(default)]
+    #[allow(dead_code)]
     pub cookies: String,
 }
 

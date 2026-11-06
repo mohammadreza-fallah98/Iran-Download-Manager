@@ -1,5 +1,4 @@
 /Resource/
-/Release/
 windows-form/target/
 .env*
 !.env.example

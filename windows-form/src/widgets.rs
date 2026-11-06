@@ -3,6 +3,7 @@ use egui::{pos2, vec2, Color32, CornerRadius, FontId, Pos2, Rect, Response, Sens
 
 // ── Palette ─────────────────────────────────────────────────────────────────
 
+#[allow(dead_code)]
 pub struct Palette {
     pub toolbar_bg:    Color32,
     pub sidebar_bg:    Color32,
@@ -111,9 +112,6 @@ pub fn make_visuals(theme: Theme) -> egui::Visuals {
     }
 }
 
-// ── Legacy colour constants (kept for compatibility) ─────────────────────────
-pub const SELECT_BLUE:    Color32 = Color32::from_rgb(0, 90, 160);
-pub const SELECT_BORDER:  Color32 = Color32::from_rgb(0, 140, 220);
 pub const PROGRESS_BLUE:  Color32 = Color32::from_rgb(0, 190, 120);
 
 // ── Icons ────────────────────────────────────────────────────────────────────
@@ -193,14 +191,14 @@ fn draw_icon(p: &egui::Painter, icon: Icon, c: Pos2, a: f32, theme: Theme) {
     match icon {
         Icon::AddUrl => {
             // Circle with + sign — neon green
-            p.circle(c, 15.0, Color32::TRANSPARENT, Stroke::new(2.5, green));
+            p.circle(c, 15.0, Color32::TRANSPARENT, Stroke::new(2.5_f32, green));
             p.circle(c, 15.0, Color32::from_rgba_premultiplied(0, 230, 130, 25), Stroke::NONE);
             p.line_segment([c + vec2(-8.0, 0.0), c + vec2(8.0, 0.0)], Stroke::new(stroke_w, green));
             p.line_segment([c + vec2(0.0, -8.0), c + vec2(0.0, 8.0)], Stroke::new(stroke_w, green));
         }
         Icon::Resume => {
             // Down arrow inside circle — cyan
-            p.circle(c, 15.0, Color32::TRANSPARENT, Stroke::new(2.5, cyan));
+            p.circle(c, 15.0, Color32::TRANSPARENT, Stroke::new(2.5_f32, cyan));
             p.circle(c, 15.0, Color32::from_rgba_premultiplied(0, 220, 255, 20), Stroke::NONE);
             // Arrow shaft
             p.line_segment([c + vec2(0.0, -9.0), c + vec2(0.0, 2.0)], Stroke::new(stroke_w, cyan));
@@ -209,20 +207,20 @@ fn draw_icon(p: &egui::Painter, icon: Icon, c: Pos2, a: f32, theme: Theme) {
         }
         Icon::Stop => {
             // Square stop — red neon
-            p.rect(Rect::from_center_size(c, vec2(28.0, 28.0)), CornerRadius::same(5), Color32::from_rgba_premultiplied(255, 70, 70, 20), Stroke::new(2.5, red), StrokeKind::Inside);
+            p.rect(Rect::from_center_size(c, vec2(28.0, 28.0)), CornerRadius::same(5), Color32::from_rgba_premultiplied(255, 70, 70, 20), Stroke::new(2.5_f32, red), StrokeKind::Inside);
             p.rect_filled(Rect::from_center_size(c, vec2(10.0, 10.0)), 2.0, red);
         }
         Icon::StopAll => {
-            p.rect(Rect::from_center_size(c + vec2(5.0, -5.0), vec2(22.0, 22.0)), CornerRadius::same(4), Color32::from_rgba_premultiplied(255, 70, 70, 10), Stroke::new(1.5, fade(Color32::from_rgb(220, 80, 80), a)), StrokeKind::Inside);
-            p.rect(Rect::from_center_size(c + vec2(-3.0, 3.0), vec2(22.0, 22.0)), CornerRadius::same(4), Color32::from_rgba_premultiplied(255, 70, 70, 20), Stroke::new(2.5, red), StrokeKind::Inside);
+            p.rect(Rect::from_center_size(c + vec2(5.0, -5.0), vec2(22.0, 22.0)), CornerRadius::same(4), Color32::from_rgba_premultiplied(255, 70, 70, 10), Stroke::new(1.5_f32, fade(Color32::from_rgb(220, 80, 80), a)), StrokeKind::Inside);
+            p.rect(Rect::from_center_size(c + vec2(-3.0, 3.0), vec2(22.0, 22.0)), CornerRadius::same(4), Color32::from_rgba_premultiplied(255, 70, 70, 20), Stroke::new(2.5_f32, red), StrokeKind::Inside);
             p.rect_filled(Rect::from_center_size(c + vec2(-3.0, 3.0), vec2(8.0, 8.0)), 2.0, red);
         }
         Icon::Delete => {
             // Trash bin — orange neon
-            p.rect(Rect::from_min_max(c + vec2(-9.0, -7.0), c + vec2(9.0, 14.0)), CornerRadius::same(2), Color32::from_rgba_premultiplied(255, 160, 30, 20), Stroke::new(2.0, orange), StrokeKind::Inside);
-            p.rect(Rect::from_min_max(c + vec2(-12.0, -12.0), c + vec2(12.0, -8.0)), CornerRadius::same(2), Color32::TRANSPARENT, Stroke::new(2.0, orange), StrokeKind::Inside);
+            p.rect(Rect::from_min_max(c + vec2(-9.0, -7.0), c + vec2(9.0, 14.0)), CornerRadius::same(2), Color32::from_rgba_premultiplied(255, 160, 30, 20), Stroke::new(2.0_f32, orange), StrokeKind::Inside);
+            p.rect(Rect::from_min_max(c + vec2(-12.0, -12.0), c + vec2(12.0, -8.0)), CornerRadius::same(2), Color32::TRANSPARENT, Stroke::new(2.0_f32, orange), StrokeKind::Inside);
             for dx in [-4.0_f32, 0.0, 4.0] {
-                p.line_segment([c + vec2(dx, -3.0), c + vec2(dx, 10.0)], Stroke::new(1.5, orange));
+                p.line_segment([c + vec2(dx, -3.0), c + vec2(dx, 10.0)], Stroke::new(1.5_f32, orange));
             }
         }
         Icon::Options => {
@@ -232,21 +230,21 @@ fn draw_icon(p: &egui::Painter, icon: Icon, c: Pos2, a: f32, theme: Theme) {
                 let d = vec2(ang.cos(), ang.sin());
                 p.line_segment([c + d * 8.0, c + d * 15.0], Stroke::new(4.5_f32, blue));
             }
-            p.circle(c, 11.0, palette(theme).toolbar_bg, Stroke::new(2.0, blue));
+            p.circle(c, 11.0, palette(theme).toolbar_bg, Stroke::new(2.0_f32, blue));
             p.circle_filled(c, 4.5, blue);
         }
         Icon::Scheduler => {
             // Clock — purple neon
-            p.circle(c, 15.0, Color32::TRANSPARENT, Stroke::new(2.5, purple));
+            p.circle(c, 15.0, Color32::TRANSPARENT, Stroke::new(2.5_f32, purple));
             p.circle(c, 15.0, Color32::from_rgba_premultiplied(180, 80, 255, 15), Stroke::NONE);
-            p.line_segment([c, c + vec2(0.0, -9.0)], Stroke::new(2.5, purple));
-            p.line_segment([c, c + vec2(6.0, 4.0)], Stroke::new(2.0, purple));
+            p.line_segment([c, c + vec2(0.0, -9.0)], Stroke::new(2.5_f32, purple));
+            p.line_segment([c, c + vec2(6.0, 4.0)], Stroke::new(2.0_f32, purple));
             // tick marks
             for i in 0u8..12 {
                 let ang = i as f32 * std::f32::consts::TAU / 12.0;
                 let d = vec2(ang.cos(), ang.sin());
                 let (r0, r1) = if i % 3 == 0 { (11.5, 14.0) } else { (12.5, 14.0) };
-                p.line_segment([c + d * r0, c + d * r1], Stroke::new(1.0, purple));
+                p.line_segment([c + d * r0, c + d * r1], Stroke::new(1.0_f32, purple));
             }
         }
         Icon::StartQueue => {
@@ -261,26 +259,26 @@ fn draw_icon(p: &egui::Painter, icon: Icon, c: Pos2, a: f32, theme: Theme) {
                 let w = if i % 2 == 0 { 20.0 } else { 15.0 };
                 p.rect_filled(Rect::from_min_size(c + vec2(-15.0, dy - 2.0), vec2(w, 4.0)), 2.0, gray);
             }
-            p.rect(Rect::from_center_size(c + vec2(10.0, 3.0), vec2(13.0, 13.0)), CornerRadius::same(2), Color32::from_rgba_premultiplied(255, 70, 70, 20), Stroke::new(2.0, red), StrokeKind::Inside);
+            p.rect(Rect::from_center_size(c + vec2(10.0, 3.0), vec2(13.0, 13.0)), CornerRadius::same(2), Color32::from_rgba_premultiplied(255, 70, 70, 20), Stroke::new(2.0_f32, red), StrokeKind::Inside);
         }
         Icon::Grabber => {
             // Magnifier — cyan neon
-            p.circle(c + vec2(-3.0, -4.0), 10.0, Color32::from_rgba_premultiplied(0, 220, 255, 15), Stroke::new(2.5, cyan));
-            p.line_segment([c + vec2(4.5, 3.0), c + vec2(13.0, 12.0)], Stroke::new(4.0, orange));
+            p.circle(c + vec2(-3.0, -4.0), 10.0, Color32::from_rgba_premultiplied(0, 220, 255, 15), Stroke::new(2.5_f32, cyan));
+            p.line_segment([c + vec2(4.5, 3.0), c + vec2(13.0, 12.0)], Stroke::new(4.0_f32, orange));
         }
         Icon::TellFriend => {
-            p.circle(c + vec2(-6.0, -6.0), 7.0, Color32::from_rgba_premultiplied(255, 160, 30, 20), Stroke::new(2.0, orange));
-            p.circle(c + vec2(7.0, -3.0), 5.5, Color32::from_rgba_premultiplied(60, 160, 255, 20), Stroke::new(2.0, blue));
-            p.line_segment([c + vec2(-6.0, 1.0), c + vec2(2.0, 5.0)], Stroke::new(1.5, orange));
-            p.line_segment([c + vec2(7.0, 2.5), c + vec2(13.0, 8.0)], Stroke::new(1.5, blue));
+            p.circle(c + vec2(-6.0, -6.0), 7.0, Color32::from_rgba_premultiplied(255, 160, 30, 20), Stroke::new(2.0_f32, orange));
+            p.circle(c + vec2(7.0, -3.0), 5.5, Color32::from_rgba_premultiplied(60, 160, 255, 20), Stroke::new(2.0_f32, blue));
+            p.line_segment([c + vec2(-6.0, 1.0), c + vec2(2.0, 5.0)], Stroke::new(1.5_f32, orange));
+            p.line_segment([c + vec2(7.0, 2.5), c + vec2(13.0, 8.0)], Stroke::new(1.5_f32, blue));
         }
         Icon::ThemeToggle => {
             // Sun/moon icon
-            p.circle(c, 9.0, Color32::TRANSPARENT, Stroke::new(2.0, orange));
+            p.circle(c, 9.0, Color32::TRANSPARENT, Stroke::new(2.0_f32, orange));
             for i in 0u8..8 {
                 let ang = i as f32 * std::f32::consts::TAU / 8.0;
                 let d = vec2(ang.cos(), ang.sin());
-                p.line_segment([c + d * 11.0, c + d * 14.5], Stroke::new(1.5, orange));
+                p.line_segment([c + d * 11.0, c + d * 14.5], Stroke::new(1.5_f32, orange));
             }
             // Moon crescent overlay for dark, nothing for light
             if theme == Theme::Dark {
@@ -365,7 +363,7 @@ pub fn segment_bar(ui: &mut Ui, parts: &[Part], size: Option<u64>, theme: Theme)
     }
 }
 
-/// Simple horizontal progress bar (0.0–1.0).
+#[allow(dead_code)]
 pub fn progress_bar(ui: &mut Ui, frac: f32, theme: Theme) {
     let p = palette(theme);
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 10.0), Sense::hover());

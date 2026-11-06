@@ -216,11 +216,11 @@ mod win {
         DestroyMenu(menu);
     }
 
-    // Build a 32x32 HICON from the embedded icon.png
+    // Build a 32x32 HICON from the embedded icon.ico
     unsafe fn create_hicon() -> usize {
-        let bytes = include_bytes!("../assets/icon.png");
+        let bytes = include_bytes!("../assets/icon.ico");
         if let Ok(img) = image::load_from_memory(bytes) {
-            let img = img.resize_exact(32, 32, image::imageops::FilterType::Nearest).to_rgba8();
+            let img = img.resize_exact(32, 32, image::imageops::FilterType::Lanczos3).to_rgba8();
             let rgba = img.into_raw();
 
             let bmi = BITMAPINFO {
