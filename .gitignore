@@ -1,0 +1,9 @@
+/Resource/
+/Release/
+Frontend/target/
+.env*
+!.env.example
+
+Frontend/MECHANICS.md
+Frontend/mechanics.json
+Frontend/shots/
