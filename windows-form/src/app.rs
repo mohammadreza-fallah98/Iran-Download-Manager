@@ -94,6 +94,73 @@ fn data_path() -> Option<PathBuf> {
     Some(PathBuf::from(base).join("IranDownloadManager").join("downloads.json"))
 }
 
+/// Open a native folder-picker dialog and return the chosen path.
+fn pick_folder(start: &Path) -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const NO_WINDOW: u32 = 0x08000000;
+        let start_str = start.display().to_string().replace('\'', "''");
+        let script = format!(
+            "Add-Type -AssemblyName System.Windows.Forms; \
+             $f = New-Object System.Windows.Forms.FolderBrowserDialog; \
+             $f.SelectedPath = '{}'; \
+             if ($f.ShowDialog() -eq 'OK') {{ Write-Output $f.SelectedPath }}",
+            start_str
+        );
+        let out = std::process::Command::new("powershell")
+            .args(["-NoProfile", "-STA", "-Command", &script])
+            .creation_flags(NO_WINDOW)
+            .output()
+            .ok()?;
+        let path = std::str::from_utf8(&out.stdout).ok()?.trim().to_string();
+        if path.is_empty() { None } else { Some(PathBuf::from(path)) }
+    }
+    #[cfg(not(windows))]
+    { let _ = start; None }
+}
+
+/// Write / remove the Windows startup registry value.
+fn set_run_on_startup(enabled: bool) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const NO_WINDOW: u32 = 0x08000000;
+        let key = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
+        if enabled {
+            if let Ok(exe) = std::env::current_exe() {
+                let path_str = exe.display().to_string();
+                let _ = std::process::Command::new("reg")
+                    .args(["add", key, "/v", "IranDownloadManager", "/t", "REG_SZ", "/d", &path_str, "/f"])
+                    .creation_flags(NO_WINDOW)
+                    .output();
+            }
+        } else {
+            let _ = std::process::Command::new("reg")
+                .args(["delete", key, "/v", "IranDownloadManager", "/f"])
+                .creation_flags(NO_WINDOW)
+                .output();
+        }
+    }
+    let _ = enabled;
+}
+
+fn startup_is_registered() -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const NO_WINDOW: u32 = 0x08000000;
+        return std::process::Command::new("reg")
+            .args(["query", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run", "/v", "IranDownloadManager"])
+            .creation_flags(NO_WINDOW)
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+    }
+    #[cfg(not(windows))]
+    false
+}
+
 fn open_in_shell(path: &Path, select: bool) {
     #[cfg(windows)]
     {
@@ -120,7 +187,8 @@ impl App {
     pub fn new(cc: &eframe::CreationContext<'_>, screenshot: Option<PathBuf>, server_rx: Receiver<AddRequest>) -> Self {
         let shot = screenshot.map(|path| Shot { path, frames: 0 });
         let data_path = if shot.is_some() { None } else { data_path() };
-        let saved: SavedState = data_path.as_ref().and_then(|p| std::fs::read_to_string(p).ok()).and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+        let mut saved: SavedState = data_path.as_ref().and_then(|p| std::fs::read_to_string(p).ok()).and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+        saved.settings.run_on_startup = startup_is_registered();
         cc.egui_ctx.set_visuals(widgets::make_visuals(saved.settings.theme));
         let downloads = saved
             .downloads
@@ -374,6 +442,7 @@ impl App {
         while let Ok(req) = self.server_rx.try_recv() {
             if net::looks_like_url(&req.url) && self.file_info.is_none() {
                 self.open_file_info(req.url.clone());
+                ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
                 // Pre-fill description with referrer so the user can see where it came from
                 if let Some(fi) = self.file_info.as_mut() {
                     if !req.description.is_empty() {
@@ -1023,7 +1092,7 @@ impl App {
     fn options_dialog(&mut self, ctx: &egui::Context) {
         let Some((s, tab)) = &mut self.options else { return };
         let mut result = None;
-        egui::Window::new("Options").collapsible(false).resizable(false).default_width(520.0).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
+        egui::Window::new("Options").collapsible(false).resizable(true).default_width(600.0).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.selectable_value(tab, OptionsTab::General, "General");
                 ui.selectable_value(tab, OptionsTab::Connection, "Connection");
@@ -1034,6 +1103,8 @@ impl App {
                 OptionsTab::General => {
                     ui.checkbox(&mut s.watch_clipboard, "Automatically start downloading of URLs placed to clipboard");
                     ui.label(RichText::new("Copied links to known file types open the Download File Info dialog.").small().weak());
+                    ui.add_space(6.0);
+                    ui.checkbox(&mut s.run_on_startup, "Run Iran Download Manager when Windows starts");
                 }
                 OptionsTab::Connection => {
                     ui.horizontal(|ui| {
@@ -1056,19 +1127,35 @@ impl App {
                     let mut base = s.base_dir.display().to_string();
                     ui.horizontal(|ui| {
                         ui.label("Main download folder");
-                        if ui.add(egui::TextEdit::singleline(&mut base).desired_width(330.0)).changed() {
+                        if ui.add(egui::TextEdit::singleline(&mut base).desired_width(280.0)).changed() {
                             s.base_dir = PathBuf::from(base.trim());
+                        }
+                        if ui.button("...").clicked() {
+                            if let Some(path) = pick_folder(&s.base_dir) {
+                                s.base_dir = path;
+                            }
                         }
                     });
                     ui.add_space(4.0);
-                    egui::Grid::new("cats").striped(true).num_columns(3).show(ui, |ui| {
+                    egui::Grid::new("cats").striped(true).num_columns(4).spacing([6.0, 4.0]).show(ui, |ui| {
                         ui.strong("Category");
                         ui.strong("Folder");
+                        ui.strong("");
                         ui.strong("File types");
                         ui.end_row();
                         for c in Category::ALL {
                             ui.label(c.name());
-                            ui.label(s.folder_for(c).display().to_string());
+                            let current = s.folder_for(c);
+                            let mut dir_str = current.display().to_string();
+                            if ui.add(egui::TextEdit::singleline(&mut dir_str).desired_width(230.0)).changed() {
+                                s.category_dirs.insert(c.name().to_string(), PathBuf::from(dir_str.trim()));
+                            }
+                            if ui.button("...").on_hover_text("Browse folder").clicked() {
+                                let start = s.folder_for(c);
+                                if let Some(path) = pick_folder(&start) {
+                                    s.category_dirs.insert(c.name().to_string(), path);
+                                }
+                            }
                             ui.label(RichText::new(c.extensions()).small());
                             ui.end_row();
                         }
@@ -1087,7 +1174,9 @@ impl App {
         });
         match result {
             Some(true) => {
-                self.settings = self.options.take().unwrap().0;
+                let (new_settings, _) = self.options.take().unwrap();
+                set_run_on_startup(new_settings.run_on_startup);
+                self.settings = new_settings;
                 self.save_state();
             }
             Some(false) => self.options = None,
@@ -1336,6 +1425,9 @@ fn status_text(d: &Download) -> String {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if ctx.input(|i| i.key_pressed(egui::Key::Delete)) && !self.selected.is_empty() && self.confirm_delete.is_none() {
+            self.confirm_delete = Some((self.selected.iter().copied().collect(), false));
+        }
         self.tick(ctx);
         let menu_bg = widgets::palette(self.settings.theme).menu_bg;
         egui::TopBottomPanel::top("menu").frame(egui::Frame::new().fill(menu_bg)).show(ctx, |ui| self.menu_bar(ui, ctx));

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
@@ -202,6 +203,10 @@ pub struct Settings {
     pub stop_at: String,
     #[serde(default)]
     pub theme: Theme,
+    #[serde(default)]
+    pub run_on_startup: bool,
+    #[serde(default)]
+    pub category_dirs: HashMap<String, PathBuf>,
 }
 
 impl Default for Settings {
@@ -217,13 +222,18 @@ impl Default for Settings {
             stop_at_enabled: false,
             stop_at: "08:00".into(),
             theme: Theme::Dark,
+            run_on_startup: false,
+            category_dirs: HashMap::new(),
         }
     }
 }
 
 impl Settings {
-    /// `%s\Downloads\%s` (string 0x69e30c): one folder per category.
+    /// One folder per category; respects per-category overrides.
     pub fn folder_for(&self, c: Category) -> PathBuf {
+        if let Some(p) = self.category_dirs.get(c.name()) {
+            return p.clone();
+        }
         match c {
             Category::General => self.base_dir.clone(),
             other => self.base_dir.join(other.name()),
