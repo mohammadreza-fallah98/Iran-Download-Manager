@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-set SOURCE_DIR=%~dp0Frontend
+set SOURCE_DIR=%~dp0windows-form
 
 echo Starting Iran Download Manager (dev mode)...
 echo.

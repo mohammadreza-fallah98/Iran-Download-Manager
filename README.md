@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="Frontend/assets/icon.png" width="120" alt="Iran Download Manager Logo"/>
+<img src="windows-form/assets/icon.png" width="120" alt="Iran Download Manager Logo"/>
 
 # Iran Download Manager
 
@@ -71,7 +71,7 @@ deploy-windows.bat        # release build → Release/EXE/
 Or manually:
 
 ```bash
-cd Frontend
+cd windows-form
 cargo run                 # development
 cargo build --release     # release binary → target/release/iran-download-manager.exe
 ```
@@ -82,8 +82,7 @@ cargo build --release     # release binary → target/release/iran-download-mana
 
 ```
 Iran-Download-Manager/
-├── Backend/              No server backend (see Backend/ARCHITECTURE.md)
-├── Frontend/             Rust + egui desktop app
+├── windows-form/         Rust + egui desktop app
 │   ├── src/
 │   │   ├── main.rs       Entry point, window, server startup
 │   │   ├── app.rs        UI: toolbar, list, dialogs, theme

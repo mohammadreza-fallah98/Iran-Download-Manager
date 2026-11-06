@@ -1,9 +1,9 @@
 /Resource/
 /Release/
-Frontend/target/
+windows-form/target/
 .env*
 !.env.example
 
-Frontend/MECHANICS.md
-Frontend/mechanics.json
-Frontend/shots/
+windows-form/MECHANICS.md
+windows-form/mechanics.json
+windows-form/shots/

@@ -4,7 +4,7 @@ setlocal EnableDelayedExpansion
 :: ── Config ────────────────────────────────────────────────────────────────
 set APP_NAME=IranDownloadManager
 set APP_VERSION=0.1.0
-set SOURCE_DIR=%~dp0Frontend
+set SOURCE_DIR=%~dp0windows-form
 set OUT_DIR=%~dp0Release\EXE
 
 :: ── Date stamp ────────────────────────────────────────────────────────────
