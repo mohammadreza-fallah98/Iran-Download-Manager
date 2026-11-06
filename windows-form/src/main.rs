@@ -9,6 +9,9 @@ mod tray;
 mod widgets;
 
 fn main() -> eframe::Result<()> {
+    if !tray::ensure_single_instance() {
+        return Ok(());
+    }
     let args: Vec<String> = std::env::args().collect();
     let screenshot = args.iter().position(|a| a == "--screenshot").and_then(|i| args.get(i + 1)).map(std::path::PathBuf::from);
 

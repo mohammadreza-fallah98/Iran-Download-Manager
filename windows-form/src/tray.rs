@@ -11,6 +11,14 @@ pub struct TrayHandle {
     pub show_requested: Arc<AtomicBool>,
 }
 
+/// Returns false if another instance is already running.
+pub fn ensure_single_instance() -> bool {
+    #[cfg(windows)]
+    { return win::check_single_instance(); }
+    #[cfg(not(windows))]
+    true
+}
+
 #[cfg(not(windows))]
 pub fn start() -> TrayHandle {
     TrayHandle {}
@@ -24,24 +32,26 @@ mod win {
     use std::sync::OnceLock;
 
     // --- Constants ---
-    const WM_TRAY_CALLBACK: u32 = 0x0401; // WM_USER + 1
-    const WM_LBUTTONUP: u32     = 0x0202;
-    const WM_LBUTTONDBLCLK: u32 = 0x0203;
-    const WM_RBUTTONUP: u32     = 0x0205;
-    const WM_COMMAND: u32       = 0x0111;
-    const NIF_MESSAGE: u32      = 0x0001;
-    const NIF_ICON: u32         = 0x0002;
-    const NIF_TIP: u32          = 0x0004;
-    const NIM_ADD: u32          = 0x0000_0000;
-    const NIM_DELETE: u32       = 0x0000_0002;
-    const IDM_SHOW: usize       = 100;
-    const IDM_EXIT: usize       = 101;
-    const MF_STRING: u32        = 0x0000_0000;
-    const MF_SEPARATOR: u32     = 0x0000_0800;
-    const TPM_RIGHTBUTTON: u32  = 0x0002;
-    const WS_EX_TOOLWINDOW: u32 = 0x0000_0080;
-    const WS_POPUP: u32         = 0x8000_0000;
+    const WM_TRAY_CALLBACK: u32  = 0x0401;
+    const WM_LBUTTONUP: u32      = 0x0202;
+    const WM_LBUTTONDBLCLK: u32  = 0x0203;
+    const WM_RBUTTONUP: u32      = 0x0205;
+    const WM_COMMAND: u32        = 0x0111;
+    const NIF_MESSAGE: u32       = 0x0001;
+    const NIF_ICON: u32          = 0x0002;
+    const NIF_TIP: u32           = 0x0004;
+    const NIM_ADD: u32           = 0x0000_0000;
+    const NIM_DELETE: u32        = 0x0000_0002;
+    const IDM_SHOW: usize        = 100;
+    const IDM_EXIT: usize        = 101;
+    const MF_STRING: u32         = 0x0000_0000;
+    const MF_SEPARATOR: u32      = 0x0000_0800;
+    const TPM_RIGHTBUTTON: u32   = 0x0002;
+    const WS_EX_TOOLWINDOW: u32  = 0x0000_0080;
+    const WS_POPUP: u32          = 0x8000_0000;
     const IDI_APPLICATION: *const u16 = 32512usize as *const u16;
+    const ERROR_ALREADY_EXISTS: u32 = 183;
+    const DIB_RGB_COLORS: u32    = 0;
 
     // --- Structs ---
     #[repr(C)]
@@ -80,6 +90,29 @@ mod win {
         fn zeroed() -> Self { unsafe { std::mem::zeroed() } }
     }
 
+    #[repr(C)]
+    struct BITMAPINFOHEADER {
+        bi_size: u32, bi_width: i32, bi_height: i32,
+        bi_planes: u16, bi_bit_count: u16,
+        bi_compression: u32, bi_size_image: u32,
+        bi_x_pels_per_meter: i32, bi_y_pels_per_meter: i32,
+        bi_clr_used: u32, bi_clr_important: u32,
+    }
+
+    #[repr(C)]
+    struct BITMAPINFO {
+        bmi_header: BITMAPINFOHEADER,
+        bmi_colors: [u32; 1],
+    }
+
+    #[repr(C)]
+    struct ICONINFO {
+        f_icon: i32,
+        x_hotspot: u32, y_hotspot: u32,
+        hbm_mask: usize,
+        hbm_color: usize,
+    }
+
     // --- FFI ---
     #[link(name = "user32")]
     extern "system" {
@@ -100,11 +133,30 @@ mod win {
             hwnd: usize, rect: *const std::ffi::c_void) -> i32;
         fn DestroyMenu(menu: usize) -> i32;
         fn GetCursorPos(pt: *mut POINT) -> i32;
+        fn GetDC(hwnd: usize) -> usize;
+        fn ReleaseDC(hwnd: usize, hdc: usize) -> i32;
+        fn CreateCompatibleDC(hdc: usize) -> usize;
+        fn DeleteDC(hdc: usize) -> i32;
+        fn CreateBitmap(nwidth: i32, nheight: i32, nplanes: u32, nbit_count: u32, lp_bits: *const u8) -> usize;
+        fn CreateIconIndirect(piconinfo: *mut ICONINFO) -> usize;
+    }
+
+    #[link(name = "gdi32")]
+    extern "system" {
+        fn CreateDIBSection(hdc: usize, pbmi: *const BITMAPINFO, usage: u32,
+            ppvbits: *mut *mut u8, hsection: usize, offset: u32) -> usize;
+        fn DeleteObject(ho: usize) -> i32;
     }
 
     #[link(name = "shell32")]
     extern "system" {
         fn Shell_NotifyIconW(msg: u32, data: *mut NOTIFYICONDATAW) -> i32;
+    }
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn CreateMutexW(attrs: *const std::ffi::c_void, initial_owner: i32, name: *const u16) -> usize;
+        fn GetLastError() -> u32;
     }
 
     // --- Global shared state ---
@@ -164,6 +216,70 @@ mod win {
         DestroyMenu(menu);
     }
 
+    // Build a 32x32 HICON from the embedded icon.png
+    unsafe fn create_hicon() -> usize {
+        let bytes = include_bytes!("../assets/icon.png");
+        if let Ok(img) = image::load_from_memory(bytes) {
+            let img = img.resize_exact(32, 32, image::imageops::FilterType::Nearest).to_rgba8();
+            let rgba = img.into_raw();
+
+            let bmi = BITMAPINFO {
+                bmi_header: BITMAPINFOHEADER {
+                    bi_size: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                    bi_width: 32,
+                    bi_height: -32, // top-down
+                    bi_planes: 1,
+                    bi_bit_count: 32,
+                    bi_compression: 0,
+                    bi_size_image: 0,
+                    bi_x_pels_per_meter: 0, bi_y_pels_per_meter: 0,
+                    bi_clr_used: 0, bi_clr_important: 0,
+                },
+                bmi_colors: [0],
+            };
+
+            let hdc_screen = GetDC(0);
+            let hdc = CreateCompatibleDC(hdc_screen);
+            ReleaseDC(0, hdc_screen);
+
+            let mut bits: *mut u8 = std::ptr::null_mut();
+            let hbm_color = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &mut bits, 0, 0);
+            DeleteDC(hdc);
+
+            if hbm_color != 0 && !bits.is_null() {
+                let dst = std::slice::from_raw_parts_mut(bits, 32 * 32 * 4);
+                for i in 0..(32 * 32usize) {
+                    let r = rgba[i * 4] as u32;
+                    let g = rgba[i * 4 + 1] as u32;
+                    let b = rgba[i * 4 + 2] as u32;
+                    let a = rgba[i * 4 + 3] as u32;
+                    // Pre-multiplied alpha, BGRA order
+                    dst[i * 4]     = ((b * a) / 255) as u8;
+                    dst[i * 4 + 1] = ((g * a) / 255) as u8;
+                    dst[i * 4 + 2] = ((r * a) / 255) as u8;
+                    dst[i * 4 + 3] = a as u8;
+                }
+            }
+
+            // 1bpp mask — all zeros lets alpha channel do transparency
+            let mask_bytes = vec![0u8; (32 * 32) / 8];
+            let hbm_mask = CreateBitmap(32, 32, 1, 1, mask_bytes.as_ptr());
+
+            let mut iconinfo = ICONINFO {
+                f_icon: 1,
+                x_hotspot: 0, y_hotspot: 0,
+                hbm_mask,
+                hbm_color,
+            };
+            let hicon = CreateIconIndirect(&mut iconinfo);
+            DeleteObject(hbm_color);
+            DeleteObject(hbm_mask);
+
+            if hicon != 0 { return hicon; }
+        }
+        LoadIconW(0, IDI_APPLICATION)
+    }
+
     fn tray_thread() {
         unsafe {
             let hinstance = GetModuleHandleW(std::ptr::null());
@@ -186,7 +302,7 @@ mod win {
                 0, 0, hinstance, std::ptr::null_mut(),
             );
 
-            let icon = LoadIconW(0, IDI_APPLICATION);
+            let icon = create_hicon();
             let tip_str = "Iran Download Manager";
             let mut tip = [0u16; 128];
             for (i, c) in tip_str.encode_utf16().enumerate().take(127) {
@@ -213,6 +329,15 @@ mod win {
         }
     }
 
+    pub fn check_single_instance() -> bool {
+        unsafe {
+            let name = w("Global\\IranDownloadManager_SingleInstance");
+            let mutex = CreateMutexW(std::ptr::null(), 0, name.as_ptr());
+            if mutex == 0 { return true; } // Cannot determine, allow run
+            GetLastError() != ERROR_ALREADY_EXISTS
+        }
+    }
+
     pub fn start_impl() -> TrayHandle {
         let exit_requested = Arc::new(AtomicBool::new(false));
         let show_requested = Arc::new(AtomicBool::new(false));
@@ -221,6 +346,18 @@ mod win {
             show_requested: show_requested.clone(),
         });
         std::thread::spawn(tray_thread);
+
+        // When the window is hidden, update() doesn't run, so watch exit_requested here
+        let exit_mon = exit_requested.clone();
+        std::thread::spawn(move || {
+            loop {
+                std::thread::sleep(std::time::Duration::from_millis(200));
+                if exit_mon.load(Ordering::Relaxed) {
+                    std::process::exit(0);
+                }
+            }
+        });
+
         TrayHandle { exit_requested, show_requested }
     }
 }

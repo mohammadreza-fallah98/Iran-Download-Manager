@@ -681,6 +681,7 @@ impl App {
         let pal = widgets::palette(self.settings.theme);
         let painter = ui.painter().clone();
         let sep_color = pal.border;
+        ui.style_mut().interaction.selectable_labels = false;
         TableBuilder::new(ui)
             .striped(true)
             .resizable(true)
@@ -1166,7 +1167,7 @@ impl App {
                             ui.label(c.name());
                             let current = s.folder_for(c);
                             let mut dir_str = current.display().to_string();
-                            if ui.add(egui::TextEdit::singleline(&mut dir_str).desired_width(320.0)).changed() {
+                            if ui.add(egui::TextEdit::singleline(&mut dir_str).desired_width(420.0)).changed() {
                                 s.category_dirs.insert(c.name().to_string(), PathBuf::from(dir_str.trim()));
                             }
                             if ui.button("...").on_hover_text("Browse folder").clicked() {
