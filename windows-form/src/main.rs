@@ -5,6 +5,7 @@ mod engine;
 mod model;
 mod net;
 mod server;
+mod tray;
 mod widgets;
 
 fn main() -> eframe::Result<()> {

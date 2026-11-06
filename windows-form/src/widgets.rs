@@ -99,8 +99,13 @@ pub fn make_visuals(theme: Theme) -> egui::Visuals {
             v.window_fill      = p.list_bg;
             v.extreme_bg_color = p.sidebar_bg;
             v.faint_bg_color   = p.list_row_alt;
+            v.override_text_color = Some(p.text);
             v.selection.bg_fill = p.list_selected;
             v.selection.stroke  = egui::Stroke::new(1.0_f32, p.list_sel_border);
+            v.widgets.noninteractive.fg_stroke = egui::Stroke::new(1.0_f32, p.text);
+            v.widgets.inactive.fg_stroke       = egui::Stroke::new(1.0_f32, p.text);
+            v.widgets.hovered.fg_stroke        = egui::Stroke::new(1.0_f32, p.text);
+            v.widgets.active.fg_stroke         = egui::Stroke::new(1.5_f32, p.text);
             v
         }
     }

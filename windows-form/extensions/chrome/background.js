@@ -15,7 +15,7 @@ function getExt(url) {
   try {
     const path = new URL(url).pathname;
     const dot = path.lastIndexOf(".");
-    if (dot >= 0) return path.slice(dot + 1).toLowerCase();
+    if (dot >= 0) return path.slice(dot + 1).toLowerCase().split("?")[0].split("#")[0];
   } catch (_) {}
   return "";
 }

@@ -25,6 +25,13 @@ function injectButton(anchor) {
   if (anchor.dataset.idmInjected) return;
   anchor.dataset.idmInjected = "1";
 
+  // Intercept direct click on the link itself
+  anchor.addEventListener("click", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    chrome.runtime.sendMessage({ type: "ADD_DOWNLOAD", url: anchor.href, referrer: location.href, fileName: "" });
+  }, true);
+
   const btn = document.createElement("span");
   btn.textContent = "⬇ IDM";
   btn.title = "Download with Iran Download Manager";

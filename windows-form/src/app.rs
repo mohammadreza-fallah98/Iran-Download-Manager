@@ -2,6 +2,7 @@ use crate::engine;
 use crate::model::*;
 use crate::net::{self, ProbeInfo};
 use crate::server::AddRequest;
+use crate::tray::TrayHandle;
 use crate::widgets::{self, Icon};
 use egui::{Color32, RichText};
 use egui_extras::{Column, TableBuilder};
@@ -87,6 +88,9 @@ pub struct App {
     data_path: Option<PathBuf>,
     shot: Option<Shot>,
     server_rx: Receiver<AddRequest>,
+    tray: TrayHandle,
+    force_top_frames: u32,
+    really_exit: bool,
 }
 
 fn data_path() -> Option<PathBuf> {
@@ -235,6 +239,9 @@ impl App {
             data_path,
             shot,
             server_rx,
+            tray: crate::tray::start(),
+            force_top_frames: 0,
+            really_exit: false,
         }
     }
 
@@ -442,7 +449,9 @@ impl App {
         while let Ok(req) = self.server_rx.try_recv() {
             if net::looks_like_url(&req.url) && self.file_info.is_none() {
                 self.open_file_info(req.url.clone());
+                ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
                 ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                self.force_top_frames = 3;
                 // Pre-fill description with referrer so the user can see where it came from
                 if let Some(fi) = self.file_info.as_mut() {
                     if !req.description.is_empty() {
@@ -473,6 +482,7 @@ impl App {
                 }
                 ui.separator();
                 if ui.button("Exit").clicked() {
+                    self.really_exit = true;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
             });
@@ -668,6 +678,9 @@ impl App {
         let mut clicked: Option<(u64, bool)> = None;
         let mut double: Option<u64> = None;
         let mut context: Option<(u64, &'static str)> = None;
+        let pal = widgets::palette(self.settings.theme);
+        let painter = ui.painter().clone();
+        let sep_color = pal.border;
         TableBuilder::new(ui)
             .striped(true)
             .resizable(true)
@@ -721,6 +734,12 @@ impl App {
                         ui.label(&d.description);
                     });
                     let resp = row.response();
+                    // Row separator line
+                    let r = resp.rect;
+                    painter.line_segment(
+                        [egui::pos2(r.min.x, r.max.y - 0.5), egui::pos2(r.max.x, r.max.y - 0.5)],
+                        egui::Stroke::new(1.0_f32, sep_color),
+                    );
                     if resp.clicked() {
                         clicked = Some((d.id, resp.ctx.input(|i| i.modifiers.command)));
                     }
@@ -819,7 +838,7 @@ impl App {
         let Some(url) = &mut self.add_url else { return };
         let mut ok = false;
         let mut cancel = false;
-        egui::Window::new("Enter new address to download").collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
+        egui::Window::new("Enter new address to download").collapsible(false).resizable(false).constrain(true).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Address:");
                 let r = ui.add(egui::TextEdit::singleline(url).desired_width(420.0).hint_text("https://"));
@@ -863,7 +882,7 @@ impl App {
         }
         let mut action = None;
         let mut cancel = false;
-        egui::Window::new("Download File Info").collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
+        egui::Window::new("Download File Info").collapsible(false).resizable(false).constrain(true).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
             egui::Grid::new("fi").num_columns(2).spacing([10.0, 8.0]).show(ui, |ui| {
                 ui.label("URL");
                 ui.add(egui::TextEdit::singleline(&mut fi.url.clone()).desired_width(430.0).interactive(false));
@@ -949,7 +968,7 @@ impl App {
             let mut cancel = false;
             let d = h.d.lock().unwrap().clone();
             let pct = d.progress().map(|p| format!("{:.0}% ", p * 100.0)).unwrap_or_default();
-            egui::Window::new(format!("{pct}{}", d.file_name)).id(egui::Id::new(("progress", id))).open(&mut open).collapsible(true).resizable(false).default_width(480.0).show(ctx, |ui| {
+            egui::Window::new(format!("{pct}{}", d.file_name)).id(egui::Id::new(("progress", id))).open(&mut open).collapsible(true).resizable(false).constrain(true).default_width(480.0).show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     let limiter = self.progress_tab_limiter.contains(&id);
                     if ui.selectable_label(!limiter, "Download status").clicked() {
@@ -1058,7 +1077,7 @@ impl App {
             let Some(h) = self.find(id) else { continue };
             let d = h.d.lock().unwrap().clone();
             let mut close = false;
-            egui::Window::new("Download complete").id(egui::Id::new(("done", id))).collapsible(false).resizable(false).show(ctx, |ui| {
+            egui::Window::new("Download complete").id(egui::Id::new(("done", id))).collapsible(false).resizable(false).constrain(true).show(ctx, |ui| {
                 egui::Grid::new(("dg", id)).num_columns(2).spacing([12.0, 4.0]).show(ui, |ui| {
                     ui.label("Address");
                     ui.label(RichText::new(&d.url).small());
@@ -1092,7 +1111,7 @@ impl App {
     fn options_dialog(&mut self, ctx: &egui::Context) {
         let Some((s, tab)) = &mut self.options else { return };
         let mut result = None;
-        egui::Window::new("Options").collapsible(false).resizable(true).default_width(600.0).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
+        egui::Window::new("Options").collapsible(false).resizable(true).constrain(true).default_width(600.0).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.selectable_value(tab, OptionsTab::General, "General");
                 ui.selectable_value(tab, OptionsTab::Connection, "Connection");
@@ -1127,7 +1146,7 @@ impl App {
                     let mut base = s.base_dir.display().to_string();
                     ui.horizontal(|ui| {
                         ui.label("Main download folder");
-                        if ui.add(egui::TextEdit::singleline(&mut base).desired_width(280.0)).changed() {
+                        if ui.add(egui::TextEdit::singleline(&mut base).desired_width(340.0)).changed() {
                             s.base_dir = PathBuf::from(base.trim());
                         }
                         if ui.button("...").clicked() {
@@ -1147,7 +1166,7 @@ impl App {
                             ui.label(c.name());
                             let current = s.folder_for(c);
                             let mut dir_str = current.display().to_string();
-                            if ui.add(egui::TextEdit::singleline(&mut dir_str).desired_width(230.0)).changed() {
+                            if ui.add(egui::TextEdit::singleline(&mut dir_str).desired_width(320.0)).changed() {
                                 s.category_dirs.insert(c.name().to_string(), PathBuf::from(dir_str.trim()));
                             }
                             if ui.button("...").on_hover_text("Browse folder").clicked() {
@@ -1192,7 +1211,7 @@ impl App {
         let mut start = false;
         let mut stop = false;
         let s = &mut self.settings;
-        egui::Window::new("Scheduler").open(&mut open).collapsible(false).resizable(false).show(ctx, |ui| {
+        egui::Window::new("Scheduler").open(&mut open).collapsible(false).resizable(false).constrain(true).show(ctx, |ui| {
             ui.label(RichText::new("Main download queue").strong());
             ui.add_space(4.0);
             ui.horizontal(|ui| {
@@ -1256,7 +1275,7 @@ impl App {
         }
         let mut open = true;
         let mut add: Option<bool> = None;
-        egui::Window::new("Grabber").open(&mut open).default_width(640.0).show(ctx, |ui| {
+        egui::Window::new("Grabber").open(&mut open).default_width(640.0).constrain(true).show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Start page");
                 ui.add(egui::TextEdit::singleline(&mut g.page).desired_width(420.0).hint_text("https://"));
@@ -1339,7 +1358,7 @@ impl App {
     fn small_dialogs(&mut self, ctx: &egui::Context) {
         if let Some((ids, with_files)) = &mut self.confirm_delete {
             let mut answer = None;
-            egui::Window::new("Confirm").collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
+            egui::Window::new("Confirm").collapsible(false).resizable(false).constrain(true).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
                 ui.label(format!("Are you sure you want to delete {} selected download(s) from the list?", ids.len()));
                 ui.checkbox(with_files, "Also delete finished files from disk");
                 ui.horizontal(|ui| {
@@ -1363,7 +1382,7 @@ impl App {
         if self.tell_friend {
             let mut open = true;
             let message = "I use Iran Download Manager to download files faster, with pause and resume. Give it a try!";
-            egui::Window::new("Tell a Friend").open(&mut open).collapsible(false).resizable(false).show(ctx, |ui| {
+            egui::Window::new("Tell a Friend").open(&mut open).collapsible(false).resizable(false).constrain(true).show(ctx, |ui| {
                 ui.label(message);
                 if ui.button("Copy message").clicked() {
                     ui.ctx().copy_text(message.to_string());
@@ -1373,7 +1392,7 @@ impl App {
         }
         if self.about {
             let mut open = true;
-            egui::Window::new("About").open(&mut open).collapsible(false).resizable(false).show(ctx, |ui| {
+            egui::Window::new("About").open(&mut open).collapsible(false).resizable(false).constrain(true).show(ctx, |ui| {
                 ui.heading("Iran Download Manager");
                 ui.label("Version 0.1");
                 ui.label("Splits each file into parts and downloads them at the same time, with pause and resume, categories, a queue, a scheduler and a speed limiter.");
@@ -1425,6 +1444,36 @@ fn status_text(d: &Download) -> String {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // System tray: X button hides to tray; tray signals control show/exit
+        #[cfg(windows)]
+        {
+            use std::sync::atomic::Ordering;
+            if !self.really_exit && self.tray.exit_requested.load(Ordering::Relaxed) {
+                self.really_exit = true;
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            }
+            if self.tray.show_requested.swap(false, Ordering::Relaxed) {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                self.force_top_frames = 3;
+            }
+            if ctx.input(|i| i.viewport().close_requested()) {
+                if self.really_exit {
+                    // allow normal close
+                } else {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+                }
+            }
+        }
+        // Briefly force window to front (after tray restore or extension trigger)
+        if self.force_top_frames > 0 {
+            ctx.send_viewport_cmd(egui::ViewportCommand::WindowLevel(egui::WindowLevel::AlwaysOnTop));
+            self.force_top_frames -= 1;
+            if self.force_top_frames == 0 {
+                ctx.send_viewport_cmd(egui::ViewportCommand::WindowLevel(egui::WindowLevel::Normal));
+            }
+        }
         if ctx.input(|i| i.key_pressed(egui::Key::Delete)) && !self.selected.is_empty() && self.confirm_delete.is_none() {
             self.confirm_delete = Some((self.selected.iter().copied().collect(), false));
         }
