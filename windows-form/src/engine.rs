@@ -4,7 +4,7 @@
 //! it cuts the biggest remaining part in half and fetches the second half.
 
 use crate::model::*;
-use crate::net::{agent, describe_error, probe};
+use crate::net::{describe_error, probe};
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
@@ -37,7 +37,19 @@ pub fn start(h: &Handle) {
     }
     h.stop.store(false, Ordering::SeqCst);
     let h = h.clone();
-    thread::spawn(move || run(h));
+    let url = h.d.lock().unwrap().url.clone();
+    let (hls, dash, ftp) = (crate::hls::is_hls_url(&url), crate::dash::is_dash_url(&url), crate::ftp::is_ftp_url(&url));
+    thread::spawn(move || {
+        if ftp {
+            crate::ftp::run(h)
+        } else if hls {
+            crate::hls::run(h)
+        } else if dash {
+            crate::dash::run(h)
+        } else {
+            run(h)
+        }
+    });
 }
 
 pub fn stop(h: &Handle) {
@@ -79,12 +91,16 @@ fn prepare(h: &Handle) -> Result<(), String> {
         let info = probe(&url)?;
         let mut d = h.d.lock().unwrap();
         d.size = info.size;
+        d.server_date = info.last_modified.clone();
         d.resumable = info.resumable && info.size.is_some();
         d.parts = plan_parts(d.size, d.resumable, d.connections);
     }
     let mut d = h.d.lock().unwrap();
     fs::create_dir_all(&d.save_dir).map_err(|e| format!("Cannot create folder: {e}"))?;
     let temp = d.temp_path();
+    if let Some(parent) = temp.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("Cannot create folder: {e}"))?;
+    }
     if !temp.exists() || !d.resumable {
         if d.downloaded() > 0 && !d.resumable {
             d.message = "The server does not support resume; downloading from the beginning.".into();
@@ -209,7 +225,7 @@ fn fetch_once(h: &Handle, idx: usize, owner: u64) -> Result<bool, String> {
         d.parts[idx].info = "Connecting...".into();
         v
     };
-    let mut req = agent().get(&url);
+    let mut req = crate::net::get(&url);
     if resumable {
         let range = match end {
             Some(e) => format!("bytes={pos}-{}", e - 1),
@@ -276,7 +292,32 @@ fn fetch_once(h: &Handle, idx: usize, owner: u64) -> Result<bool, String> {
     }
 }
 
-fn throttle(h: &Handle, bytes: usize) {
+/// Overall limit in KB/s (0 = none), shared by every download.
+pub static GLOBAL_LIMIT_KBPS: AtomicU64 = AtomicU64::new(0);
+static GLOBAL_LIMITER: std::sync::Mutex<Limiter> = std::sync::Mutex::new(Limiter { tokens: 0.0, last: None });
+
+pub fn throttle_global(bytes: usize) {
+    let kbps = GLOBAL_LIMIT_KBPS.load(Ordering::Relaxed);
+    if kbps == 0 {
+        return;
+    }
+    let rate = kbps as f64 * 1024.0;
+    let wait = {
+        let mut l = GLOBAL_LIMITER.lock().unwrap();
+        let now = Instant::now();
+        let dt = l.last.map(|t| now.duration_since(t).as_secs_f64()).unwrap_or(0.0);
+        l.tokens = (l.tokens + rate * dt).min(rate);
+        l.last = Some(now);
+        l.tokens -= bytes as f64;
+        if l.tokens < 0.0 { -l.tokens / rate } else { 0.0 }
+    };
+    if wait > 0.0 {
+        thread::sleep(Duration::from_secs_f64(wait.min(5.0)));
+    }
+}
+
+pub(crate) fn throttle(h: &Handle, bytes: usize) {
+    throttle_global(bytes);
     let Some(kbps) = h.d.lock().unwrap().speed_limit_kbps else { return };
     let rate = (kbps.max(1) as f64) * 1024.0;
     let wait = {
@@ -293,7 +334,7 @@ fn throttle(h: &Handle, bytes: usize) {
     }
 }
 
-fn finish(h: &Handle, error: Option<String>) {
+pub(crate) fn finish(h: &Handle, error: Option<String>) {
     let mut d = h.d.lock().unwrap();
     d.active_connections = 0;
     if d.speed > MIN_STORED_SPEED {
@@ -303,8 +344,13 @@ fn finish(h: &Handle, error: Option<String>) {
     let all_done = !d.parts.is_empty() && d.parts.iter().all(Part::is_done);
     if all_done {
         let target = unique_path(d.final_path());
-        match fs::rename(d.temp_path(), &target) {
+        match move_file_any(&d.temp_path(), &target) {
             Ok(()) => {
+                if USE_SERVER_DATE.load(Ordering::Relaxed) {
+                    if let Some(date) = &d.server_date {
+                        apply_server_date(&target, date);
+                    }
+                }
                 d.file_name = target.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
                 d.status = Status::Complete;
                 d.in_queue = false;
@@ -354,6 +400,12 @@ mod tests {
             connections: 2,
             speed_limit_kbps: None,
             in_queue: false,
+            queue_id: 0,
+            referer: String::new(),
+            user_agent: String::new(),
+            hls: None,
+            temp_dir: None,
+            server_date: None,
             message: String::new(),
             last_speed: 0.0,
             speed: 0.0,
@@ -469,6 +521,12 @@ pub mod tests_support {
             connections: DEFAULT_CONNECTIONS,
             speed_limit_kbps: None,
             in_queue: false,
+            queue_id: 0,
+            referer: String::new(),
+            user_agent: String::new(),
+            hls: None,
+            temp_dir: None,
+            server_date: None,
             message: String::new(),
             last_speed: 0.0,
             speed: 0.0,
