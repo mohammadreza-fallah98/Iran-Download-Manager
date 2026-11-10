@@ -7,3 +7,6 @@ windows-form/target/
 windows-form/MECHANICS.md
 windows-form/mechanics.json
 windows-form/shots/
+
+# dated copies made by deploy-windows.bat (the stable IranDownloadManager.exe is kept)
+Release/EXE/IranDownloadManager-windows-*.exe
