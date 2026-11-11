@@ -53,6 +53,14 @@
 - **FTP:** `ftp.rs` یک کلاینت ساده با `std::net` است (USER/PASS، TYPE I، SIZE، PASV، REST، RETR). پروکسی روی FTP اعمال نمی‌شود. پیشرفت با همان مدل `Part` نشان داده می‌شود و `engine::finish` فایل را نهایی می‌کند.
 - **زبان:** `Settings.language`. egui شکل‌دهی عربی/فارسی و bidi ندارد، پس `i18n::tr` متن فارسی را با جدول اشکال حروف (Arabic Presentation Forms) می‌چسباند و به ترتیب بصری می‌برد؛ ارقام و کلمات لاتین سر جای خود می‌مانند و پرانتزها آینه می‌شوند. فونت Vazirmatn (OFL) در `assets/` به‌عنوان فونت جایگزین ثبت می‌شود. تمام متن‌های UI در `app.rs` با `tr("...")` رد می‌شوند و متنی که در دیکشنری نباشد انگلیسی می‌ماند. یک تست بررسی می‌کند همه‌ی گلیف‌های ترجمه‌ها در فونت هست. اسکرین‌شات فارسی: `IDM_LANG=fa iran-download-manager.exe --screenshot out.png`.
 
+## موارد تکمیلی
+
+- **پنل صف:** بعد از «Download Later» و افزودن گروهی (Grabber) اگر بیش از یک صف باشد، `queue_pick_dialog` صف را می‌پرسد (`Settings.queue_panel_on_later/batch`).
+- **آنتی‌ویروس:** تب جدا؛ `Settings::should_scan` بر اساس فعال‌بودن، فرمان و پسوندها تصمیم می‌گیرد و `run_after_download` فرمان را در پس‌زمینه اجرا می‌کند.
+- **قطع اینترنت:** `AfterAll::Disconnect` اتصال‌های VPN را با PowerShell قطع و `ipconfig /release` را اجرا می‌کند (آزادسازی IP ممکن است دسترسی ادمین بخواهد).
+- **به‌روزرسانی:** منوی Help › Check for updates آخرین release گیت‌هاب را می‌خواند (`net::latest_release_tag`) و با `net::is_newer_version` مقایسه می‌کند.
+- **Refresh address:** آدرس جدید اول probe می‌شود؛ اگر حجم فرق کند یا resume از دست برود پذیرفته نمی‌شود (`apply_refreshed_address`).
+
 ## قرارداد HTTP محلی (`localhost:6800`)
 
 | مسیر | متد | توضیح |

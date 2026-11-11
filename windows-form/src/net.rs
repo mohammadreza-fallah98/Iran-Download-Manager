@@ -324,6 +324,25 @@ pub fn percent_decode(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
+/// True when `latest` (e.g. `v0.2.0`) is a higher version than `current` (e.g. `0.1.0`).
+pub fn is_newer_version(latest: &str, current: &str) -> bool {
+    let parse = |v: &str| -> Vec<u64> { v.trim().trim_start_matches(['v', 'V']).split('.').map(|p| p.chars().take_while(char::is_ascii_digit).collect::<String>().parse().unwrap_or(0)).collect() };
+    let (a, b) = (parse(latest), parse(current));
+    (0..a.len().max(b.len())).map(|i| (a.get(i).copied().unwrap_or(0), b.get(i).copied().unwrap_or(0))).find(|(x, y)| x != y).is_some_and(|(x, y)| x > y)
+}
+
+/// Asks GitHub for the newest published release; returns its tag name.
+pub fn latest_release_tag(api_url: &str) -> Result<String, String> {
+    let resp = match agent().get(api_url).set("Accept", "application/vnd.github+json").call() {
+        Ok(r) => r,
+        Err(ureq::Error::Status(404, _)) => return Err("No published release was found.".into()),
+        Err(e) => return Err(describe_error(e)),
+    };
+    let body = resp.into_string().map_err(|e| e.to_string())?;
+    let json: serde_json::Value = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+    json.get("tag_name").and_then(|t| t.as_str()).map(str::to_string).ok_or_else(|| "The answer has no version.".to_string())
+}
+
 pub fn looks_like_url(text: &str) -> bool {
     let t = text.trim();
     (t.starts_with("http://") || t.starts_with("https://") || t.starts_with("ftp://")) && !t.contains(char::is_whitespace) && t.len() > 10
@@ -442,6 +461,15 @@ Connection: close
         let pac = format!("http://127.0.0.1:{port}/proxy.pac");
         assert_eq!(pac_proxy_for(&pac, "http://example.com/a.zip"), Some(("127.0.0.1".into(), "8888".into())));
         assert_eq!(pac_proxy_for(&pac, "http://printer.local/a.zip"), None);
+    }
+
+    #[test]
+    fn is_newer_version_compares_numbers_not_text() {
+        assert!(is_newer_version("v0.2.0", "0.1.0"));
+        assert!(is_newer_version("1.10.0", "1.9.9"));
+        assert!(!is_newer_version("v0.1.0", "0.1.0"));
+        assert!(!is_newer_version("0.1", "0.1.1"));
+        assert!(is_newer_version("0.1.1-beta", "0.1.0"));
     }
 
     #[test]

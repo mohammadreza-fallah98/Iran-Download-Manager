@@ -295,6 +295,21 @@ pub struct Settings {
     pub ext_video_button: bool,
     #[serde(default)]
     pub language: crate::i18n::Language,
+    /// Ask which queue to use after "Download Later".
+    #[serde(default = "default_true")]
+    pub queue_panel_on_later: bool,
+    /// Ask which queue to use after adding a group of files (Grabber).
+    #[serde(default = "default_true")]
+    pub queue_panel_on_batch: bool,
+    #[serde(default)]
+    pub antivirus_enabled: bool,
+    /// Only files with these extensions are scanned; empty means every file.
+    #[serde(default = "default_scan_extensions")]
+    pub antivirus_extensions: String,
+}
+
+pub fn default_scan_extensions() -> String {
+    "exe msi zip rar 7z iso apk scr bat cmd js vbs ps1 doc docx xls xlsx pdf".into()
 }
 
 /// What to do when the same address is added twice.
@@ -507,11 +522,28 @@ impl Default for Settings {
             ext_intercept: true,
             ext_video_button: true,
             language: crate::i18n::Language::English,
+            queue_panel_on_later: true,
+            queue_panel_on_batch: true,
+            antivirus_enabled: false,
+            antivirus_extensions: default_scan_extensions(),
         }
     }
 }
 
 impl Settings {
+    /// True when a finished file should be handed to the scanner program.
+    pub fn should_scan(&self, file_name: &str) -> bool {
+        if !self.antivirus_enabled || self.antivirus_cmd.trim().is_empty() {
+            return false;
+        }
+        if self.antivirus_extensions.trim().is_empty() {
+            return true;
+        }
+        let Some((_, ext)) = file_name.rsplit_once('.') else { return false };
+        let ext = ext.to_ascii_lowercase();
+        self.antivirus_extensions.split_whitespace().any(|p| extension_matches(&p.to_ascii_lowercase(), &ext))
+    }
+
     pub fn queue_name(&self, id: u32) -> String {
         self.queues.iter().find(|q| q.id == id).map(|q| q.name.clone()).unwrap_or_else(|| "Main download queue".into())
     }
@@ -603,6 +635,19 @@ mod tests {
         assert!(!a.exists());
         assert_eq!(std::fs::read(&b).unwrap(), b"xyz");
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn should_scan_needs_switch_command_and_matching_extension() {
+        let mut s = Settings::default();
+        assert!(!s.should_scan("a.exe"));
+        s.antivirus_enabled = true;
+        assert!(!s.should_scan("a.exe"), "no command yet");
+        s.antivirus_cmd = "scan {path}".into();
+        assert!(s.should_scan("setup.EXE"));
+        assert!(!s.should_scan("movie.mp4"));
+        s.antivirus_extensions = String::new();
+        assert!(s.should_scan("movie.mp4"));
     }
 
     #[test]

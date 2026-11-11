@@ -61,6 +61,7 @@ enum OptionsTab {
     Proxy,
     Sounds,
     Passwords,
+    Antivirus,
 }
 
 /// What to do once every running download has finished.
@@ -72,6 +73,7 @@ enum AfterAll {
     Restart,
     Sleep,
     Hibernate,
+    Disconnect,
 }
 
 impl AfterAll {
@@ -85,10 +87,15 @@ impl AfterAll {
             AfterAll::Restart => "Restart",
             AfterAll::Sleep => "Sleep",
             AfterAll::Hibernate => "Hibernate",
+            AfterAll::Disconnect => "Disconnect from the internet",
         }
     }
 
     fn run(self, force: bool) {
+        if self == AfterAll::Disconnect {
+            std::thread::spawn(disconnect_internet);
+            return;
+        }
         #[cfg(windows)]
         {
             let mut cmd = match self {
@@ -108,7 +115,21 @@ impl AfterAll {
     }
 }
 
+/// Drops VPN/dial-up connections and releases the IP address (the latter may need administrator rights).
+fn disconnect_internet() {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const NO_WINDOW: u32 = 0x08000000;
+        let script = "Get-VpnConnection -ErrorAction SilentlyContinue | Where-Object { $_.ConnectionStatus -eq 'Connected' } | ForEach-Object { rasdial $_.Name /disconnect }";
+        let _ = std::process::Command::new("powershell").args(["-NoProfile", "-Command", script]).creation_flags(NO_WINDOW).status();
+        let _ = std::process::Command::new("ipconfig").arg("/release").creation_flags(NO_WINDOW).status();
+    }
+}
+
 const POWER_COUNTDOWN_SECS: u64 = 30;
+const UPDATE_API_URL: &str = "https://api.github.com/repos/mohammadreza-fallah98/Iran-Download-Manager/releases/latest";
+const UPDATE_PAGE_URL: &str = "https://github.com/mohammadreza-fallah98/Iran-Download-Manager/releases";
 
 struct RenameDlg {
     id: u64,
@@ -118,6 +139,9 @@ struct RenameDlg {
 }
 
 pub struct App {
+    queue_pick: Option<(Vec<u64>, u32)>,
+    update_rx: Option<Receiver<Result<String, String>>>,
+    refresh_check: Option<(u64, String, Receiver<Result<ProbeInfo, String>>)>,
     notice: Option<String>,
     quota_window_start: Instant,
     quota_bytes: u64,
@@ -406,6 +430,9 @@ impl App {
             statuses: HashMap::new(),
             add_url: None,
             notice: None,
+            queue_pick: None,
+            update_rx: None,
+            refresh_check: None,
             quota_window_start: Instant::now(),
             quota_bytes: 0,
             quota_last_total: 0,
@@ -713,7 +740,9 @@ impl App {
             }
             if d.status == Status::Complete && prev.is_some_and(|p| p != Status::Complete) {
                 sound::play(&self.settings.sounds.complete);
-                run_after_download(&self.settings.antivirus_cmd, &d.final_path());
+                if self.settings.should_scan(&d.file_name) {
+                    run_after_download(&self.settings.antivirus_cmd, &d.final_path());
+                }
             }
             if d.status == Status::Complete && prev.is_some_and(|p| p != Status::Complete) {
                 if self.settings.show_complete_dialog && self.progress.contains(&d.id) && !self.complete.contains(&d.id) {
@@ -765,6 +794,8 @@ impl App {
             self.last_save = now;
             self.save_state();
         }
+
+        self.poll_background_checks();
 
         // Pick up downloads sent by the browser extension
         while let Ok(req) = self.server_rx.try_recv() {
@@ -946,6 +977,10 @@ impl App {
                 }
             });
             ui.menu_button(tr("Help"), |ui| {
+                if ui.button(tr("Check for updates...")).clicked() {
+                    self.check_for_updates();
+                    ui.close_menu();
+                }
                 if ui.button(tr("About")).clicked() {
                     self.about = true;
                     ui.close_menu();
@@ -1475,10 +1510,102 @@ impl App {
             self.refresh_dlg = None;
         } else if apply {
             let (_, url) = self.refresh_dlg.take().unwrap();
-            if let Some(h) = self.find(id) {
-                h.d.lock().unwrap().url = url.trim().to_string();
+            let url = url.trim().to_string();
+            let (tx, rx) = channel();
+            let u = url.clone();
+            std::thread::spawn(move || {
+                let _ = tx.send(net::probe(&u));
+            });
+            self.refresh_check = Some((id, url, rx));
+            self.notice = Some(tr("Checking the new address..."));
+        }
+    }
+
+    /// "Add to queue" panel: moves just-added files into the queue the user picks.
+    fn queue_pick_dialog(&mut self, ctx: &egui::Context) {
+        let Some((ids, target)) = &mut self.queue_pick else { return };
+        let queues = self.settings.queues.clone();
+        let mut ok = false;
+        let mut skip = false;
+        egui::Window::new(tr("Add to queue")).collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
+            ui.label(format!("{} {}", ids.len(), tr("file(s) were added to a queue. Choose the queue:")));
+            egui::ComboBox::from_id_salt("queue_pick").selected_text(queues.iter().find(|q| q.id == *target).map(|q| tr(&q.name)).unwrap_or_default()).show_ui(ui, |ui| {
+                for q in &queues {
+                    ui.selectable_value(target, q.id, tr(&q.name));
+                }
+            });
+            ui.add_space(6.0);
+            ui.horizontal(|ui| {
+                ok = ui.button(tr("    OK    ")).clicked();
+                skip = ui.button(tr("Keep in the main queue")).clicked();
+            });
+        });
+        if ok {
+            let (ids, target) = self.queue_pick.take().unwrap();
+            for id in ids {
+                if let Some(h) = self.find(id) {
+                    let mut d = h.d.lock().unwrap();
+                    d.in_queue = true;
+                    d.queue_id = target;
+                }
+            }
+        } else if skip {
+            self.queue_pick = None;
+        }
+    }
+
+    fn check_for_updates(&mut self) {
+        if self.update_rx.is_some() {
+            return;
+        }
+        let (tx, rx) = channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(net::latest_release_tag(UPDATE_API_URL));
+        });
+        self.update_rx = Some(rx);
+        self.notice = Some(tr("Checking for updates..."));
+    }
+
+    /// Polls the background update check and the new-address check.
+    fn poll_background_checks(&mut self) {
+        if let Some(rx) = &self.update_rx {
+            if let Ok(result) = rx.try_recv() {
+                self.update_rx = None;
+                let current = env!("CARGO_PKG_VERSION");
+                self.notice = Some(match result {
+                    Ok(tag) if net::is_newer_version(&tag, current) => format!("{} {tag} ({} {current}). {}", tr("A newer version is available:"), tr("you have"), UPDATE_PAGE_URL),
+                    Ok(_) => format!("{} ({current})", tr("You have the latest version")),
+                    Err(e) => format!("{}: {e}", tr("Could not check for updates")),
+                });
             }
         }
+        if let Some((id, url, rx)) = &self.refresh_check {
+            if let Ok(result) = rx.try_recv() {
+                let (id, url) = (*id, url.clone());
+                self.refresh_check = None;
+                self.notice = Some(self.apply_refreshed_address(id, &url, result));
+            }
+        }
+    }
+
+    /// Accepts the new address only when it points to the same file (same size, resume still possible).
+    fn apply_refreshed_address(&mut self, id: u64, url: &str, probe: Result<ProbeInfo, String>) -> String {
+        let Some(h) = self.find(id) else { return tr("The download no longer exists.") };
+        let info = match probe {
+            Ok(i) => i,
+            Err(e) => return format!("{}: {e}", tr("The new address could not be checked")),
+        };
+        let mut d = h.d.lock().unwrap();
+        if let (Some(old), Some(new)) = (d.size, info.size) {
+            if old != new {
+                return format!("{} ({} / {}). {}", tr("The new address points to a file of a different size"), widgets::fmt_size(new), widgets::fmt_size(old), tr("The address was not changed."));
+            }
+        }
+        if d.downloaded() > 0 && d.resumable && !info.resumable {
+            return tr("The new server does not support resume, so the parts already downloaded could not be kept. The address was not changed.");
+        }
+        d.url = url.to_string();
+        tr("The address was updated. The download can be resumed.")
     }
 
     fn props_dialog(&mut self, ctx: &egui::Context) {
@@ -1516,6 +1643,7 @@ impl App {
     }
 
     fn dialogs(&mut self, ctx: &egui::Context) {
+        self.queue_pick_dialog(ctx);
         self.notice_dialog(ctx);
         self.queue_edit_dialog(ctx);
         self.rename_dialog(ctx);
@@ -1683,6 +1811,9 @@ impl App {
                 self.progress.push(id);
             } else {
                 h.d.lock().unwrap().in_queue = true;
+                if self.settings.queue_panel_on_later && self.settings.queues.len() > 1 {
+                    self.queue_pick = Some((vec![id], MAIN_QUEUE_ID));
+                }
             }
         }
     }
@@ -1719,6 +1850,7 @@ impl App {
                     ui.label(tr("After all downloads are finished:"));
                     ui.radio_value(&mut self.after_all, AfterAll::Nothing, AfterAll::Nothing.label());
                     ui.radio_value(&mut self.after_all, AfterAll::ExitApp, AfterAll::ExitApp.label());
+                    ui.radio_value(&mut self.after_all, AfterAll::Disconnect, AfterAll::Disconnect.label());
                     ui.horizontal(|ui| {
                         let power = AfterAll::POWER.contains(&self.after_all);
                         if ui.radio(power, tr("Turn off / restart the computer:")).clicked() && !power {
@@ -1874,6 +2006,7 @@ impl App {
                 ui.selectable_value(tab, OptionsTab::Proxy, tr("Proxy"));
                 ui.selectable_value(tab, OptionsTab::Sounds, tr("Sounds"));
                 ui.selectable_value(tab, OptionsTab::Passwords, tr("Password Sites"));
+                ui.selectable_value(tab, OptionsTab::Antivirus, tr("Antivirus"));
             });
             ui.separator();
             match tab {
@@ -1987,8 +2120,28 @@ impl App {
                     ui.label(tr("User-Agent for downloads (empty = default):"));
                     ui.add_sized([520.0, 22.0], egui::TextEdit::singleline(&mut s.user_agent).hint_text(tr("Mozilla/5.0 (Windows NT 10.0; Win64; x64) ...")));
                     ui.add_space(8.0);
-                    ui.label(tr("Run a program on every finished file, e.g. a virus scanner ({path} = the file; empty = none):"));
-                    ui.add_sized([520.0, 22.0], egui::TextEdit::singleline(&mut s.antivirus_cmd).hint_text(tr("\"C:\\Program Files\\Windows Defender\\MpCmdRun.exe\" -Scan -ScanType 3 -File \"{path}\"")));
+                    ui.checkbox(&mut s.queue_panel_on_later, tr("Ask which queue to use after \"Download Later\""));
+                    ui.checkbox(&mut s.queue_panel_on_batch, tr("Ask which queue to use when adding a group of files"));
+                }
+                OptionsTab::Antivirus => {
+                    ui.checkbox(&mut s.antivirus_enabled, tr("Scan finished files with a virus scanner"));
+                    ui.add_enabled_ui(s.antivirus_enabled, |ui| {
+                        ui.label(tr("Program to run ({path} = the finished file):"));
+                        ui.add_sized([560.0, 22.0], egui::TextEdit::singleline(&mut s.antivirus_cmd));
+                        ui.horizontal(|ui| {
+                            if ui.button(tr("Use Windows Defender")).clicked() {
+                                s.antivirus_cmd = "\"%ProgramFiles%\\Windows Defender\\MpCmdRun.exe\" -Scan -ScanType 3 -File \"{path}\" -DisableRemediation".into();
+                            }
+                        });
+                        ui.add_space(6.0);
+                        ui.label(tr("Scan only files with these extensions (empty = every file):"));
+                        ui.add(egui::TextEdit::multiline(&mut s.antivirus_extensions).desired_width(f32::INFINITY).desired_rows(2));
+                        if ui.button(tr("Default settings")).clicked() {
+                            s.antivirus_extensions = default_scan_extensions();
+                        }
+                    });
+                    ui.add_space(6.0);
+                    ui.label(RichText::new(tr("The scanner runs in the background after each download finishes; its result is not shown here.")).small().weak());
                 }
                 OptionsTab::Proxy => {
                     ui.radio_value(&mut s.proxy.mode, ProxyMode::None, tr("Do not use a proxy"));
@@ -2299,12 +2452,18 @@ impl App {
             let g = self.grabber.as_ref().unwrap();
             let page = g.page.trim().to_string();
             let chosen: Vec<String> = g.links.iter().filter(|l| l.0).map(|l| l.1.clone()).collect();
+            let mut added = Vec::new();
             for link in chosen {
                 let name = net::file_name_from_url(&link);
                 let c = Category::for_file(&name);
                 let dir = self.settings.folder_for(c);
                 let h = self.new_download(&link, &name, c, dir, format!("Grabbed from {page}"), None);
-                h.d.lock().unwrap().in_queue = true;
+                let mut d = h.d.lock().unwrap();
+                d.in_queue = true;
+                added.push(d.id);
+            }
+            if !now && self.settings.queue_panel_on_batch && self.settings.queues.len() > 1 && !added.is_empty() {
+                self.queue_pick = Some((added, MAIN_QUEUE_ID));
             }
             if now {
                 self.start_queue();
