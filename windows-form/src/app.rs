@@ -1705,8 +1705,8 @@ impl App {
         }
         let mut action = None;
         let mut cancel = false;
-        const DLG_SIZE: egui::Vec2 = egui::vec2(640.0, 330.0);
-        let mut vp = egui::ViewportBuilder::default().with_title("Download File Info").with_inner_size(DLG_SIZE).with_resizable(false).with_minimize_button(false).with_maximize_button(false);
+        const DLG_SIZE: egui::Vec2 = egui::vec2(545.0, 240.0);
+        let mut vp = egui::ViewportBuilder::default().with_title("Download File Info").with_inner_size(DLG_SIZE).with_min_inner_size([420.0, 220.0]).with_resizable(true).with_minimize_button(false);
         // Centered on the monitor, not the top-left corner
         if let Some(mon) = ctx.input(|i| i.viewport().monitor_size) {
             vp = vp.with_position(egui::pos2(((mon.x - DLG_SIZE.x) / 2.0).max(0.0), ((mon.y - DLG_SIZE.y) / 2.0).max(0.0)));
