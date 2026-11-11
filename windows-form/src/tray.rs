@@ -72,6 +72,7 @@ mod win {
     const WS_POPUP: u32          = 0x8000_0000;
     const IDI_APPLICATION: *const u16 = 32512usize as *const u16;
     const ERROR_ALREADY_EXISTS: u32 = 183;
+    const ERROR_ACCESS_DENIED: u32 = 5;
     const DIB_RGB_COLORS: u32    = 0;
     const SW_SHOW: i32           = 5;
     const SW_RESTORE: i32        = 9;
@@ -170,6 +171,7 @@ mod win {
         fn AppendMenuW(menu: usize, flags: u32, id: usize, text: *const u16) -> i32;
         fn SetForegroundWindow(hwnd: usize) -> i32;
         fn FindWindowW(cls: *const u16, name: *const u16) -> usize;
+        fn PostMessageW(hwnd: usize, msg: u32, wp: usize, lp: isize) -> i32;
         fn ShowWindow(hwnd: usize, cmd: i32) -> i32;
         fn GetWindowRect(hwnd: usize, rect: *mut RECT) -> i32;
         fn GetWindowLongPtrW(hwnd: usize, index: i32) -> isize;
@@ -476,8 +478,22 @@ mod win {
         unsafe {
             let name = w("Global\\IranDownloadManager_SingleInstance");
             let mutex = CreateMutexW(std::ptr::null(), 0, name.as_ptr());
-            if mutex == 0 { return true; } // Cannot determine, allow run
-            GetLastError() != ERROR_ALREADY_EXISTS
+            let err = GetLastError();
+            // A copy started as administrator owns the mutex: opening it from a normal copy is
+            // "access denied" (null handle), which must also count as "already running"
+            let mut running = if mutex == 0 { err == ERROR_ACCESS_DENIED } else { err == ERROR_ALREADY_EXISTS };
+            if !running && mutex == 0 {
+                // Unknown failure: fall back to looking for the tray window of another copy
+                running = FindWindowW(w("IDM_TRAY_WND").as_ptr(), std::ptr::null()) != 0;
+            }
+            if running {
+                // Ask the running copy to show its window (ignored if it runs with higher rights)
+                let tray = FindWindowW(w("IDM_TRAY_WND").as_ptr(), std::ptr::null());
+                if tray != 0 {
+                    PostMessageW(tray, WM_TRAY_CALLBACK, 0, WM_LBUTTONDBLCLK as isize);
+                }
+            }
+            !running
         }
     }
 
