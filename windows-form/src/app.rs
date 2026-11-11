@@ -1960,10 +1960,26 @@ impl App {
             let Some(h) = self.find(id) else { continue };
             let d = h.d.lock().unwrap().clone();
             let mut close = false;
-            egui::Window::new(tr("Download complete")).id(egui::Id::new(("done", id))).collapsible(false).resizable(false).constrain(true).show(ctx, |ui| {
+            // Its own OS window, compact, and offset a little for each open one
+            let size = egui::vec2(520.0, 170.0);
+            let mut vp = egui::ViewportBuilder::default().with_title(tr("Download complete")).with_inner_size(size).with_min_inner_size([380.0, 150.0]).with_resizable(true).with_minimize_button(false);
+            if let Some(mon) = ctx.input(|i| i.viewport().monitor_size) {
+                let n = self.complete.iter().position(|x| *x == id).unwrap_or(0) as f32;
+                vp = vp.with_position(egui::pos2(((mon.x - size.x) / 2.0 + 30.0 * n).max(0.0), ((mon.y - size.y) / 2.0 + 30.0 * n).max(0.0)));
+            }
+            let first_frame = ctx.data_mut(|data| {
+                let key = egui::Id::new(("done_raised", id));
+                let seen = data.get_temp::<bool>(key).unwrap_or(false);
+                data.insert_temp(key, true);
+                !seen
+            });
+            let mut content = |ui: &mut egui::Ui| {
+                if first_frame {
+                    crate::tray::raise_window(&tr("Download complete"));
+                }
                 egui::Grid::new(("dg", id)).num_columns(2).spacing([12.0, 4.0]).show(ui, |ui| {
                     ui.label(tr("Address"));
-                    ui.label(RichText::new(&d.url).small());
+                    ui.add(egui::Label::new(RichText::new(&d.url).small()).truncate()).on_hover_text(&d.url);
                     ui.end_row();
                     ui.label(tr("Downloaded"));
                     ui.label(format!("{} ({} Bytes)", widgets::fmt_size(d.downloaded()), d.downloaded()));
@@ -1984,7 +2000,17 @@ impl App {
                     }
                     close |= ui.button(tr("Close")).clicked();
                 });
+            };
+            let mut close_req = false;
+            ctx.show_viewport_immediate(egui::ViewportId::from_hash_of(("done", id)), vp, |ctx, class| {
+                if class == egui::ViewportClass::Embedded {
+                    egui::Window::new(tr("Download complete")).id(egui::Id::new(("done", id))).collapsible(false).resizable(false).show(ctx, |ui| content(ui));
+                } else {
+                    egui::CentralPanel::default().show(ctx, |ui| content(ui));
+                    close_req = ctx.input(|i| i.viewport().close_requested());
+                }
             });
+            close |= close_req;
             if close {
                 self.complete.retain(|x| *x != id);
             }
