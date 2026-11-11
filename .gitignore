@@ -10,3 +10,6 @@ windows-form/shots/
 
 # dated copies made by deploy-windows.bat (the stable IranDownloadManager.exe is kept)
 Release/EXE/IranDownloadManager-windows-*.exe
+
+# built by deploy-windows.bat for the website
+Website/idm/downloads/

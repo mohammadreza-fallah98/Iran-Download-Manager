@@ -114,6 +114,17 @@ if errorlevel 1 (
     goto :fail
 )
 
+:: -- Website downloads (used by deploy-linux-website.bat) --
+set SITE_DL=%~dp0Website\idm\downloads
+if exist "%~dp0Website\idm" (
+    if not exist "%SITE_DL%" mkdir "%SITE_DL%"
+    del /q "%SITE_DL%\*.zip" "%SITE_DL%\*.xpi" 2>nul
+    powershell -NoProfile -Command "Compress-Archive -Force -Path '%OUT_DIR%\%APP_NAME%.exe' -DestinationPath '%OUT_DIR%\%APP_NAME%.zip'"
+    copy /y "%OUT_DIR%\%APP_NAME%.zip" "%SITE_DL%\" >nul
+    copy /y "%CHROME_PKG%" "%SITE_DL%\" >nul
+    copy /y "%FIREFOX_PKG%" "%SITE_DL%\" >nul
+)
+
 :: -- Done ------------------------------------------------------------------
 echo.
 echo Done.
