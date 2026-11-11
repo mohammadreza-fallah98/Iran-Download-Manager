@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iran Download Manager — مدیر دانلود ایران | عصر نواندیشان اسراء</title>
+<meta name="description" content="مدیر دانلود ایران: دانلود سریع با چند اتصال هم‌زمان، توقف و ادامه، صف و زمان‌بندی، دانلود ویدیو (HLS و DASH) و افزونه‌ی Firefox و Chrome. رایگان برای ویندوز.">
+<link rel="canonical" href="https://idm.asratech.ir/">
+<meta property="og:title" content="Iran Download Manager — مدیر دانلود ایران">
+<meta property="og:description" content="دانلود سریع‌تر، با توقف و ادامه، صف و زمان‌بندی">
+<link rel="icon" href="/logo.png">
+<link rel="preload" href="/fonts/Samim.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/style.css?v=2">
+<link rel="stylesheet" href="/css/product.css?v=1">
+<style>
+  /* Iran Download Manager: the app icon colors (green, white, red) */
+  .pname { background: linear-gradient(90deg, #ffffff 0%, #46d95a 45%, #179c28 100%); -webkit-background-clip: text; background-clip: text; font-size: clamp(38px, 6.5vw, 76px); }
+  .btn { background: linear-gradient(90deg, #179c28, #2fb83f); }
+  .btn.ghost { background: transparent; border: 1px solid rgba(23, 156, 40, .7); }
+  .btn.ghost:hover { background: rgba(23, 156, 40, .15); }
+  /* a few red touches */
+  .steps3 li:nth-child(3) b { background: linear-gradient(135deg, #ff3b30, #e60204); }
+  .note { border-inline-start-color: #e60204; }
+  .dl-card:nth-child(3):hover, .other:nth-child(2):hover { border-color: #e60204; }
+  .dl-row { display: flex; flex-wrap: nowrap; gap: 10px; }
+  .dl-row .btn { flex: 1 1 0; justify-content: center; text-align: center; white-space: nowrap; padding-inline: 12px; font-size: 14px; min-width: 0; }
+  @media (max-width: 480px) { .dl-row .btn { font-size: 12.5px; padding-inline: 6px; } }
+  .phone { width: min(470px, 92vw); }
+  .shot { width: min(300px, 30vw); }
+  .shot:nth-child(2) { width: min(340px, 34vw); }
+  .dl-card { text-align: right; }
+  .dl-card em { display: block; }
+  .btn { color: #fff; }
+  .btn.ghost { color: var(--ink); }
+  .tricolor { height: 4px; background: linear-gradient(90deg, #179c28 0 33.3%, #fff 33.3% 66.6%, #e60204 66.6% 100%); position: fixed; inset: var(--head-h) 0 auto 0; z-index: 49; }
+  code { direction: ltr; unicode-bidi: embed; background: rgba(255, 255, 255, .08); border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; font-size: 13px; }
+  .faq details { border: 1px solid var(--line); border-radius: 14px; background: var(--card); padding: 14px 18px; margin-bottom: 10px; }
+  .faq summary { cursor: pointer; font-weight: 700; }
+  .faq p { color: var(--muted); margin-top: 8px; font-size: 15px; }
+  @media (max-width: 900px) { .shot, .shot:nth-child(2) { width: min(340px, 90vw); } }
+</style>
+</head>
+<body data-slug="idm" style="--accent:#179c28;--accent2:#0f8a22">
+
+<header class="site-head solid" id="head">
+  <a class="brand" href="https://asratech.ir/" aria-label="عصر نواندیشان اسراء"><span class="brand-dot"></span><span class="brand-name">عصر نواندیشان اسراء</span></a>
+  <button class="nav-toggle" id="navToggle" aria-label="منو" aria-expanded="false"><i></i><i></i><i></i></button>
+  <nav class="nav" id="nav">
+    <a href="https://asratech.ir/">صفحه‌ی اصلی</a>
+    <a href="#features">امکانات</a>
+    <a href="#how">نحوه‌ی کار</a>
+    <a href="#download">دانلود</a>
+    <a href="#faq">سؤال‌ها</a>
+  </nav>
+</header>
+<div class="tricolor" aria-hidden="true"></div>
+
+<section class="sec hero p-hero" id="home">
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="particles" id="p-hero" data-color="#179c28"></div>
+  <canvas class="fx" id="fx-hero" aria-hidden="true"></canvas>
+  <div class="wrap hero-grid">
+    <div class="hero-in">
+      <p class="eyebrow">مدیر دانلود برای ویندوز</p>
+      <h1 dir="ltr" class="pname">Iran Download Manager</h1>
+      <p class="tag">دانلود سریع‌تر، با توقف و ادامه، صف و زمان‌بندی</p>
+      <p class="lead">هر فایل را به چند بخش تقسیم می‌کند و هم‌زمان می‌گیرد. افزونه‌ی مرورگر لینک‌ها و ویدیوها را مستقیم به برنامه می‌فرستد؛ دانلود HLS و DASH هم پشتیبانی می‌شود. رایگان.</p>
+      <div class="cta-row dl-row">
+        <a class="btn" href="/downloads/IranDownloadManager.zip" download>دانلود برنامه</a>
+        <a class="btn ghost" href="/downloads/IranDownloadManager-firefox.xpi" download>افزونه Firefox</a>
+        <a class="btn ghost" href="/downloads/IranDownloadManager-chrome.zip" download>افزونه Chrome</a>
+      </div>
+    </div>
+    <div class="phone-wrap">
+      <div class="glow" aria-hidden="true"></div>
+      <img class="phone" src="/p/idm/assets/hero.svg" alt="Iran Download Manager">
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="features">
+  <div class="wrap">
+    <header class="sec-head reveal"><p class="eyebrow">امکانات</p><h2>چرا Iran Download Manager؟</h2></header>
+    <div class="grid3">
+      <article class="card reveal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg><h3>دانلود چندتکه‌ای</h3><p>تا ۳۲ اتصال هم‌زمان برای هر فایل؛ سرعت بیشتر روی اینترنت ضعیف.</p></article>
+      <article class="card reveal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6V4Zm8 0h4v16h-4V4Z"/></svg><h3>توقف و ادامه</h3><p>دانلود نیمه‌کاره را هر وقت خواستید از همان‌جا ادامه دهید.</p></article>
+      <article class="card reveal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v3H4V5Zm0 5.500h16v3H4v-3Zm0 5.500h10v3H4v-3Z"/></svg><h3>صف و زمان‌بندی</h3><p>چند صف نام‌دار و شروع یا توقف خودکار در ساعت دلخواه.</p></article>
+      <article class="card reveal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7L8 5Z"/></svg><h3>دانلود ویدیو</h3><p>دکمه‌ی دانلود روی ویدیوی مرورگر؛ فایل مستقیم، HLS و DASH.</p></article>
+      <article class="card reveal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2c.9 1.100 1.700 3.200 2 7h-4c.3-3.800 1.100-5.900 2-7ZM4.100 11a8 8 0 0 1 5.600-6.400C9 6.200 8.500 8.300 8.300 11H4.100Zm0 2h4.200c.2 2.700.7 4.800 1.400 6.400A8 8 0 0 1 4.100 13Z"/></svg><h3>پروکسی و FTP</h3><p>HTTP، SOCKS5 و اسکریپت PAC؛ دانلود از FTP و سایت‌های دارای رمز.</p></article>
+      <article class="card reveal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.400 9.400 8 11 4.600-1.600 8-6 8-11V5l-8-3Zm-1 14-4-4 1.400-1.400L11 13.200l5.600-5.600L18 9l-7 7Z"/></svg><h3>ایمن و دوزبانه</h3><p>رمزها با حساب ویندوز رمزنگاری می‌شوند؛ رابط فارسی و انگلیسی، تم تیره و روشن.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="sec shots" id="shots">
+  <div class="wrap">
+    <header class="sec-head reveal"><p class="eyebrow">نگاهی به برنامه</p><h2>ساده، سریع و کامل</h2></header>
+    <div class="shots-row">
+      <img class="shot reveal" src="/p/idm/assets/shot1.svg" alt="پنجره‌ی اصلی برنامه" loading="lazy">
+      <img class="shot reveal" src="/p/idm/assets/shot2.svg" alt="پنجره‌ی اطلاعات فایل" loading="lazy">
+      <img class="shot reveal" src="/p/idm/assets/shot3.svg" alt="دکمه‌ی دانلود روی ویدیو" loading="lazy">
+    </div>
+  </div>
+</section>
+
+<section class="sec snow" id="how">
+  <div class="particles" id="p-snow" data-color="#e60204"></div>
+  <div class="wrap">
+    <header class="sec-head reveal"><p class="eyebrow">نحوه‌ی کار</p><h2>در سه قدم شروع کنید</h2></header>
+    <ol class="steps3">
+      <li class="reveal"><b>1</b><h3>برنامه را باز کنید</h3><p>فایل zip را از بخش دانلود بگیرید و <code>IranDownloadManager.exe</code> را اجرا کنید؛ نصب لازم نیست.</p></li>
+      <li class="reveal"><b>2</b><h3>افزونه را اضافه کنید</h3><p>Chrome/Edge: <code>chrome://extensions</code> › Developer mode › Load unpacked. Firefox: نصب از فروشگاه رسمی Mozilla (به‌زودی).</p></li>
+      <li class="reveal"><b>3</b><h3>روی لینک کلیک کنید</h3><p>پنجره‌ی «اطلاعات فایل» باز می‌شود و دانلود شروع می‌شود. برای دانلود با خود مرورگر، هنگام کلیک <code>Alt</code> را نگه دارید.</p></li>
+    </ol>
+    <p class="note">افزونه فقط با برنامه‌ی روی همین کامپیوتر (آدرس <code>127.0.0.1</code>) حرف می‌زند و اطلاعاتی به اینترنت نمی‌فرستد.</p>
+  </div>
+</section>
+
+<section class="sec dl" id="download">
+  <div class="wrap">
+    <header class="sec-head reveal"><p class="eyebrow">دانلود</p><h2>همین حالا Iran Download Manager را بگیرید</h2></header>
+    <div class="dl-grid">
+      <a class="dl-card reveal" href="/downloads/IranDownloadManager.zip" download><b>برنامه‌ی ویندوز</b><span>ویندوز ۱۰ و ۱۱ · فایل ZIP</span><em>حدود ۴٫۰ مگابایت</em></a>
+      <a class="dl-card reveal" href="/downloads/IranDownloadManager-firefox.xpi" download><b>افزونه‌ی Firefox</b><span>نسخه‌ی ۱٫۰٫۲ · فایل XPI</span><em>حدود ۲۵ کیلوبایت</em></a>
+      <a class="dl-card reveal" href="/downloads/IranDownloadManager-chrome.zip" download><b>افزونه‌ی Chrome / Edge</b><span>نسخه‌ی ۱٫۰٫۲ · فایل ZIP</span><em>حدود ۲۵ کیلوبایت</em></a>
+    </div>
+  </div>
+</section>
+
+<section class="sec faq" id="faq">
+  <div class="wrap narrow">
+    <header class="sec-head reveal"><p class="eyebrow">سؤال‌های متداول</p><h2>پرسش‌ها</h2></header>
+    <details><summary>ویندوز هشدار می‌دهد (SmartScreen)؛ امن است؟</summary><p>برنامه هنوز امضای دیجیتال ندارد و ویندوز ممکن است هشدار «ناشناس» بدهد. «More info» و سپس «Run anyway» را بزنید.</p></details>
+    <details><summary>افزونه‌ی Firefox چرا هنوز در فروشگاه نیست؟</summary><p>نسخه‌ی تازه برای بررسی به Mozilla ارسال می‌شود. فایل XPI فقط برای Firefox Developer/Nightly یا نصب آزمایشی (<code>about:debugging</code>) است.</p></details>
+    <details><summary>دانلودها کجا ذخیره می‌شوند؟</summary><p>به‌طور پیش‌فرض در پوشه‌ی Downloads و بر اساس نوع فایل در زیرپوشه‌ها؛ در تنظیمات › Save To قابل تغییر است.</p></details>
+  </div>
+</section>
+
+<section class="sec others-sec">
+  <div class="wrap">
+    <header class="sec-head reveal"><p class="eyebrow">سایر محصولات</p><h2>محصولات دیگر اسراء</h2></header>
+    <div class="others">
+      <a class="other reveal" href="https://motionai.ir/"><b dir="ltr">AI Studio</b><span>استودیوی هوش مصنوعی</span></a>
+      <a class="other reveal" href="https://haghai.ir/"><b dir="ltr">AI Law</b><span>وکیل هوش مصنوعی</span></a>
+      <a class="other reveal" href="https://tanyarai.ir/"><b dir="ltr">AI Body</b><span>مربی بدنسازی هوش مصنوعی</span></a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-foot">
+  <div class="wrap foot-in">
+    <div>
+      <p>© ۱۴۰۵ عصر نواندیشان اسراء — همه‌ی حقوق محفوظ است.</p>
+      <p class="dom">asratech.ir</p>
+      <p class="addr">آدرس: تهران - هروی، خیابان ریحانی - خیابان شهید مهدی ولی‌زاده (نهاندست) - پلاک ۱۴</p>
+      <p class="addr">تلفن: <a href="tel:+982126326197" dir="ltr">021-26326197</a></p>
+    </div>
+    <div class="socials"><a href="https://asratech.ir/">صفحه‌ی اصلی</a></div>
+  </div>
+</footer>
+
+<a class="up" id="up" href="#home" aria-label="بازگشت به بالا"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 8-6 6 1.400 1.400L12 10.800l4.600 4.600L18 14l-6-6Z"/></svg></a>
+
+<script src="/js/particles.min.js"></script>
+<script src="/js/fx.js"></script>
+<script src="/js/product.js?v=1"></script>
+</body>
+</html>

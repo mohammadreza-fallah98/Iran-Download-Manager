@@ -1,10 +1,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app;
+mod dash;
 mod engine;
+mod ftp;
+mod hls;
+mod i18n;
 mod model;
 mod net;
+mod secret;
 mod server;
+mod sound;
 mod tray;
 mod widgets;
 
@@ -22,7 +28,7 @@ fn main() -> eframe::Result<()> {
 
     let icon = {
         use image::GenericImageView;
-        let img = image::load_from_memory(include_bytes!("../assets/icon.ico")).ok();
+        let img = image::load_from_memory(include_bytes!("../assets/icon.png")).ok();
         img.map(|img| {
             let (w, h) = img.dimensions();
             egui::IconData { rgba: img.into_rgba8().into_raw(), width: w, height: h }

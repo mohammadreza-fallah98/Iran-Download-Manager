@@ -19,8 +19,28 @@ pub fn ensure_single_instance() -> bool {
     true
 }
 
+/// Brings a top-level window of this app (by title) in front once; it does not stay on top.
+pub fn raise_window(title: &str) {
+    #[cfg(windows)]
+    unsafe { win::raise_by_title(title); }
+    #[cfg(not(windows))]
+    let _ = title;
+}
+
+/// Sends the main window to the tray (kept alive off screen so dialogs can still be shown).
+pub fn hide_main() {
+    #[cfg(windows)]
+    unsafe { win::hide_main(); }
+}
+
+/// Wakes the UI loop (it sleeps while the window is hidden) without showing the main window.
+pub fn wake() {
+    #[cfg(windows)]
+    win::wake_ui();
+}
+
 #[cfg(not(windows))]
-pub fn start() -> TrayHandle {
+pub fn start(_ctx: egui::Context) -> TrayHandle {
     TrayHandle {}
 }
 
@@ -30,6 +50,7 @@ pub fn start() -> TrayHandle {
 mod win {
     use super::*;
     use std::sync::OnceLock;
+    use std::sync::atomic::{AtomicU32, AtomicUsize};
 
     // --- Constants ---
     const WM_TRAY_CALLBACK: u32  = 0x0401;
@@ -51,7 +72,27 @@ mod win {
     const WS_POPUP: u32          = 0x8000_0000;
     const IDI_APPLICATION: *const u16 = 32512usize as *const u16;
     const ERROR_ALREADY_EXISTS: u32 = 183;
+    const ERROR_ACCESS_DENIED: u32 = 5;
     const DIB_RGB_COLORS: u32    = 0;
+    const SW_SHOW: i32           = 5;
+    const SW_RESTORE: i32        = 9;
+    const HWND_TOPMOST: isize    = -1;
+    const HWND_NOTOPMOST: isize  = -2;
+    const SW_HIDE: i32           = 0;
+    const SW_SHOWNA: i32         = 8;
+    const GWL_EXSTYLE: i32       = -20;
+    const WS_EX_APPWINDOW: u32   = 0x0004_0000;
+    const SWP_NOZORDER: u32      = 0x0004;
+    const SWP_NOACTIVATE: u32    = 0x0010;
+    const OFFSCREEN: i32         = -32000;
+    static MAIN_HIDDEN: AtomicBool = AtomicBool::new(false);
+    static SAVED_X: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(0);
+    static SAVED_Y: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(0);
+
+    #[repr(C)]
+    struct RECT { left: i32, top: i32, right: i32, bottom: i32 }
+    const SWP_NOSIZE: u32        = 0x0001;
+    const SWP_NOMOVE: u32        = 0x0002;
 
     // --- Structs ---
     #[repr(C)]
@@ -129,6 +170,18 @@ mod win {
         fn CreatePopupMenu() -> usize;
         fn AppendMenuW(menu: usize, flags: u32, id: usize, text: *const u16) -> i32;
         fn SetForegroundWindow(hwnd: usize) -> i32;
+        fn FindWindowW(cls: *const u16, name: *const u16) -> usize;
+        fn PostMessageW(hwnd: usize, msg: u32, wp: usize, lp: isize) -> i32;
+        fn ShowWindow(hwnd: usize, cmd: i32) -> i32;
+        fn GetWindowRect(hwnd: usize, rect: *mut RECT) -> i32;
+        fn GetWindowLongPtrW(hwnd: usize, index: i32) -> isize;
+        fn SetWindowLongPtrW(hwnd: usize, index: i32, value: isize) -> isize;
+        fn GetForegroundWindow() -> usize;
+        fn GetWindowThreadProcessId(hwnd: usize, pid: *mut u32) -> u32;
+        fn AttachThreadInput(id_attach: u32, id_attach_to: u32, attach: i32) -> i32;
+        fn SetWindowPos(hwnd: usize, after: isize, x: i32, y: i32, cx: i32, cy: i32, flags: u32) -> i32;
+        fn BringWindowToTop(hwnd: usize) -> i32;
+        fn RegisterWindowMessageW(s: *const u16) -> u32;
         fn TrackPopupMenu(menu: usize, flags: u32, x: i32, y: i32, reserved: i32,
             hwnd: usize, rect: *const std::ffi::c_void) -> i32;
         fn DestroyMenu(menu: usize) -> i32;
@@ -157,12 +210,111 @@ mod win {
     extern "system" {
         fn CreateMutexW(attrs: *const std::ffi::c_void, initial_owner: i32, name: *const u16) -> usize;
         fn GetLastError() -> u32;
+        fn GetCurrentThreadId() -> u32;
     }
 
     // --- Global shared state ---
     struct TrayGlobal {
         exit_requested: Arc<AtomicBool>,
         show_requested: Arc<AtomicBool>,
+        ctx: egui::Context,
+    }
+
+    static TASKBAR_CREATED: AtomicU32 = AtomicU32::new(0);
+    static TRAY_ICON: AtomicUsize = AtomicUsize::new(0);
+
+    // Hidden eframe windows get no update() calls, so restore the native window
+    // directly from the tray thread instead of waiting for the flag to be polled.
+    pub(super) fn wake_ui() {
+        if let Some(g) = TRAY_GLOBAL.get() {
+            g.ctx.request_repaint();
+        }
+    }
+
+    pub(super) unsafe fn request_show() {
+        if let Some(g) = TRAY_GLOBAL.get() {
+            g.show_requested.store(true, Ordering::Relaxed);
+            let title = w("Iran Download Manager");
+            let main = FindWindowW(std::ptr::null(), title.as_ptr());
+            if main != 0 {
+                unhide_main(main);
+                ShowWindow(main, SW_SHOW);
+                ShowWindow(main, SW_RESTORE);
+                raise_hwnd(main);
+            }
+            g.ctx.request_repaint();
+        }
+    }
+
+    /// Windows blocks foreground steals from background processes; a topmost
+    /// flip + attaching to the foreground thread's input queue works around it.
+    unsafe fn raise_hwnd(hwnd: usize) {
+        let fg = GetForegroundWindow();
+        let fg_thread = if fg != 0 { GetWindowThreadProcessId(fg, std::ptr::null_mut()) } else { 0 };
+        let me = GetCurrentThreadId();
+        if fg_thread != 0 && fg_thread != me { AttachThreadInput(me, fg_thread, 1); }
+        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        SetForegroundWindow(hwnd);
+        BringWindowToTop(hwnd);
+        if fg_thread != 0 && fg_thread != me { AttachThreadInput(me, fg_thread, 0); }
+    }
+
+    /// "Hides" the main window in the tray by moving it far off screen and taking it out of the
+    /// taskbar. A truly hidden window would stop the UI loop, and then no dialog could be shown.
+    pub(super) unsafe fn hide_main() {
+        let title = w("Iran Download Manager");
+        let main = FindWindowW(std::ptr::null(), title.as_ptr());
+        if main == 0 || MAIN_HIDDEN.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let mut r = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+        GetWindowRect(main, &mut r);
+        SAVED_X.store(r.left, Ordering::SeqCst);
+        SAVED_Y.store(r.top, Ordering::SeqCst);
+        ShowWindow(main, SW_HIDE);
+        let ex = GetWindowLongPtrW(main, GWL_EXSTYLE);
+        SetWindowLongPtrW(main, GWL_EXSTYLE, (ex | WS_EX_TOOLWINDOW as isize) & !(WS_EX_APPWINDOW as isize));
+        SetWindowPos(main, 0, OFFSCREEN, OFFSCREEN, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        ShowWindow(main, SW_SHOWNA);
+    }
+
+    /// Undoes `hide_main`: back on screen and back in the taskbar.
+    unsafe fn unhide_main(main: usize) {
+        if !MAIN_HIDDEN.swap(false, Ordering::SeqCst) {
+            return;
+        }
+        let ex = GetWindowLongPtrW(main, GWL_EXSTYLE);
+        ShowWindow(main, SW_HIDE);
+        SetWindowLongPtrW(main, GWL_EXSTYLE, (ex & !(WS_EX_TOOLWINDOW as isize)) | WS_EX_APPWINDOW as isize);
+        SetWindowPos(main, 0, SAVED_X.load(Ordering::SeqCst), SAVED_Y.load(Ordering::SeqCst), 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+    }
+
+    /// Raises the window with this exact title (once, without keeping it on top).
+    pub(super) unsafe fn raise_by_title(title: &str) {
+        let t = w(title);
+        let hwnd = FindWindowW(std::ptr::null(), t.as_ptr());
+        if hwnd != 0 {
+            ShowWindow(hwnd, SW_SHOW);
+            raise_hwnd(hwnd);
+        }
+    }
+
+    unsafe fn add_icon(hwnd: usize) -> bool {
+        let tip_str = "Iran Download Manager";
+        let mut tip = [0u16; 128];
+        for (i, c) in tip_str.encode_utf16().enumerate().take(127) {
+            tip[i] = c;
+        }
+        let mut nid = NOTIFYICONDATAW::zeroed();
+        nid.cb_size            = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
+        nid.h_wnd              = hwnd;
+        nid.u_id               = 1;
+        nid.u_flags            = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+        nid.u_callback_message = WM_TRAY_CALLBACK;
+        nid.h_icon             = TRAY_ICON.load(Ordering::Relaxed);
+        nid.sz_tip             = tip;
+        Shell_NotifyIconW(NIM_ADD, &mut nid) != 0
     }
 
     static TRAY_GLOBAL: OnceLock<TrayGlobal> = OnceLock::new();
@@ -172,22 +324,20 @@ mod win {
         if msg == WM_TRAY_CALLBACK {
             let event = (lp & 0xFFFF) as u32;
             if event == WM_LBUTTONUP || event == WM_LBUTTONDBLCLK {
-                if let Some(g) = TRAY_GLOBAL.get() {
-                    g.show_requested.store(true, Ordering::Relaxed);
-                }
+                request_show();
             } else if event == WM_RBUTTONUP {
                 show_context_menu(hwnd);
             }
             return 0;
         }
+        if msg != 0 && msg == TASKBAR_CREATED.load(Ordering::Relaxed) {
+            add_icon(hwnd);
+            return 0;
+        }
         if msg == WM_COMMAND {
             let id = wp & 0xFFFF;
             match id {
-                IDM_SHOW => {
-                    if let Some(g) = TRAY_GLOBAL.get() {
-                        g.show_requested.store(true, Ordering::Relaxed);
-                    }
-                }
+                IDM_SHOW => request_show(),
                 IDM_EXIT => {
                     if let Some(g) = TRAY_GLOBAL.get() {
                         g.exit_requested.store(true, Ordering::Relaxed);
@@ -216,9 +366,9 @@ mod win {
         DestroyMenu(menu);
     }
 
-    // Build a 32x32 HICON from the embedded icon.ico
+    // Build a 32x32 HICON from the embedded icon.png
     unsafe fn create_hicon() -> usize {
-        let bytes = include_bytes!("../assets/icon.ico");
+        let bytes = include_bytes!("../assets/icon.png");
         if let Ok(img) = image::load_from_memory(bytes) {
             let img = img.resize_exact(32, 32, image::imageops::FilterType::Lanczos3).to_rgba8();
             let rgba = img.into_raw();
@@ -302,22 +452,13 @@ mod win {
                 0, 0, hinstance, std::ptr::null_mut(),
             );
 
-            let icon = create_hicon();
-            let tip_str = "Iran Download Manager";
-            let mut tip = [0u16; 128];
-            for (i, c) in tip_str.encode_utf16().enumerate().take(127) {
-                tip[i] = c;
+            TRAY_ICON.store(create_hicon(), Ordering::Relaxed);
+            TASKBAR_CREATED.store(RegisterWindowMessageW(w("TaskbarCreated").as_ptr()), Ordering::Relaxed);
+            // Explorer may not be ready at login: retry for a while
+            for _ in 0..60 {
+                if add_icon(hwnd) { break; }
+                std::thread::sleep(std::time::Duration::from_secs(1));
             }
-
-            let mut nid = NOTIFYICONDATAW::zeroed();
-            nid.cb_size            = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
-            nid.h_wnd              = hwnd;
-            nid.u_id               = 1;
-            nid.u_flags            = NIF_MESSAGE | NIF_ICON | NIF_TIP;
-            nid.u_callback_message = WM_TRAY_CALLBACK;
-            nid.h_icon             = icon;
-            nid.sz_tip             = tip;
-            Shell_NotifyIconW(NIM_ADD, &mut nid);
 
             let mut msg: MSG = std::mem::zeroed();
             while GetMessageW(&mut msg, 0, 0, 0) > 0 {
@@ -325,6 +466,10 @@ mod win {
                 DispatchMessageW(&msg);
             }
 
+            let mut nid = NOTIFYICONDATAW::zeroed();
+            nid.cb_size = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
+            nid.h_wnd = hwnd;
+            nid.u_id = 1;
             Shell_NotifyIconW(NIM_DELETE, &mut nid);
         }
     }
@@ -333,17 +478,32 @@ mod win {
         unsafe {
             let name = w("Global\\IranDownloadManager_SingleInstance");
             let mutex = CreateMutexW(std::ptr::null(), 0, name.as_ptr());
-            if mutex == 0 { return true; } // Cannot determine, allow run
-            GetLastError() != ERROR_ALREADY_EXISTS
+            let err = GetLastError();
+            // A copy started as administrator owns the mutex: opening it from a normal copy is
+            // "access denied" (null handle), which must also count as "already running"
+            let mut running = if mutex == 0 { err == ERROR_ACCESS_DENIED } else { err == ERROR_ALREADY_EXISTS };
+            if !running && mutex == 0 {
+                // Unknown failure: fall back to looking for the tray window of another copy
+                running = FindWindowW(w("IDM_TRAY_WND").as_ptr(), std::ptr::null()) != 0;
+            }
+            if running {
+                // Ask the running copy to show its window (ignored if it runs with higher rights)
+                let tray = FindWindowW(w("IDM_TRAY_WND").as_ptr(), std::ptr::null());
+                if tray != 0 {
+                    PostMessageW(tray, WM_TRAY_CALLBACK, 0, WM_LBUTTONDBLCLK as isize);
+                }
+            }
+            !running
         }
     }
 
-    pub fn start_impl() -> TrayHandle {
+    pub fn start_impl(ctx: egui::Context) -> TrayHandle {
         let exit_requested = Arc::new(AtomicBool::new(false));
         let show_requested = Arc::new(AtomicBool::new(false));
         let _ = TRAY_GLOBAL.set(TrayGlobal {
             exit_requested: exit_requested.clone(),
             show_requested: show_requested.clone(),
+            ctx,
         });
         std::thread::spawn(tray_thread);
 
@@ -363,6 +523,6 @@ mod win {
 }
 
 #[cfg(windows)]
-pub fn start() -> TrayHandle {
-    win::start_impl()
+pub fn start(ctx: egui::Context) -> TrayHandle {
+    win::start_impl(ctx)
 }
