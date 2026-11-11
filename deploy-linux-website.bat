@@ -39,7 +39,7 @@ scp %SSH_OPTS% "%SITE_DIR%\downloads\*" "%REMOTE%:%WEB_ROOT%/downloads/"
 if errorlevel 1 goto :fail
 
 echo [3/4] Installing the nginx site...
-scp %SSH_OPTS% "%CONF%" "%REMOTE%:/etc/nginx/conf.d/idm.asratech.ir.conf"
+scp %SSH_OPTS% "%CONF%" "%REMOTE%:/etc/nginx/conf.d/idm.conf"
 if errorlevel 1 goto :fail
 
 echo [4/4] Testing and reloading nginx...
