@@ -1996,7 +1996,8 @@ impl App {
     fn options_dialog(&mut self, ctx: &egui::Context) {
         let Some((s, tab)) = &mut self.options else { return };
         let mut result = None;
-        egui::Window::new(tr("Options")).collapsible(false).resizable(true).constrain(true).default_width(900.0).min_width(900.0).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
+        let mut window_open = true;
+        egui::Window::new(tr("Options")).open(&mut window_open).collapsible(false).resizable(true).constrain(true).default_width(900.0).min_width(900.0).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.selectable_value(tab, OptionsTab::General, tr("General"));
                 ui.selectable_value(tab, OptionsTab::Connection, tr("Connection"));
@@ -2304,6 +2305,9 @@ impl App {
                 }
             });
         });
+        if !window_open && result.is_none() {
+            result = Some(false);
+        }
         match result {
             Some(true) => {
                 let (new_settings, _) = self.options.take().unwrap();

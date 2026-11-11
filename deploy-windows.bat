@@ -47,6 +47,7 @@ if "%FIREFOX_VERSION%"=="" (
 )
 
 :: -- Stop a running copy so the exe can be replaced ------------------------
+taskkill /f /im %APP_NAME%.exe >nul 2>&1
 tasklist /fi "imagename eq iran-download-manager.exe" 2>nul | find /i "iran-download-manager.exe" >nul
 if not errorlevel 1 (
     echo A running Iran Download Manager was found and will be closed.
