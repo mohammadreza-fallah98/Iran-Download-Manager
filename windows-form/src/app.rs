@@ -979,6 +979,17 @@ impl App {
                     self.view = View::Queue(MAIN_QUEUE_ID);
                     ui.close_menu();
                 }
+                ui.separator();
+                ui.menu_button(tr("Language"), |ui| {
+                    for l in [Language::English, Language::Persian] {
+                        if ui.radio(self.settings.language == l, l.label()).clicked() {
+                            self.settings.language = l;
+                            i18n::set_language(l);
+                            self.save_state();
+                            ui.close_menu();
+                        }
+                    }
+                });
             });
             ui.menu_button(tr("Help"), |ui| {
                 if ui.button(tr("Check for updates...")).clicked() {
@@ -2082,7 +2093,7 @@ impl App {
         let mut result = None;
         let mut window_open = true;
         egui::Window::new(tr("Options")).open(&mut window_open).collapsible(false).resizable(true).constrain(true).default_width(900.0).min_width(900.0).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
-            ui.horizontal(|ui| {
+            egui::Frame::group(ui.style()).inner_margin(egui::Margin::symmetric(8, 4)).show(ui, |ui| { ui.horizontal(|ui| {
                 ui.selectable_value(tab, OptionsTab::General, tr("General"));
                 ui.selectable_value(tab, OptionsTab::Connection, tr("Connection"));
                 ui.selectable_value(tab, OptionsTab::Downloads, tr("Downloads"));
@@ -2092,8 +2103,10 @@ impl App {
                 ui.selectable_value(tab, OptionsTab::Sounds, tr("Sounds"));
                 ui.selectable_value(tab, OptionsTab::Passwords, tr("Password Sites"));
                 ui.selectable_value(tab, OptionsTab::Antivirus, tr("Antivirus"));
-            });
-            ui.separator();
+            }); });
+            ui.add_space(4.0);
+            egui::Frame::group(ui.style()).fill(ui.visuals().faint_bg_color).inner_margin(egui::Margin::same(12)).show(ui, |ui| {
+            ui.set_width(ui.available_width());
             match tab {
                 OptionsTab::General => {
                     ui.checkbox(&mut s.watch_clipboard, tr("Automatically start downloading of URLs placed to clipboard"));
@@ -2109,6 +2122,7 @@ impl App {
                         });
                     });
                     ui.add_space(10.0);
+                    ui.group(|ui| {
                     ui.strong(tr("Browser integration"));
                     match crate::server::seconds_since_extension_seen() {
                         Some(secs) if secs < 600 => ui.colored_label(Color32::from_rgb(0, 150, 90), format!("Browser extension: connected (last seen {secs} s ago)")),
@@ -2125,6 +2139,7 @@ impl App {
                                 ui.selectable_value(&mut s.block_key, k, k.name());
                             }
                         });
+                    });
                     });
                 }
                 OptionsTab::Connection => {
@@ -2379,6 +2394,7 @@ impl App {
                     }); });
                 }
             }
+            });
             ui.add_space(8.0);
             ui.horizontal(|ui| {
                 if ui.button(tr("    OK    ")).clicked() {

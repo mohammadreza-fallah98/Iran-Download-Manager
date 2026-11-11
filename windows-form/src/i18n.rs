@@ -13,10 +13,10 @@ pub enum Language {
 }
 
 impl Language {
-    pub fn label(self) -> &'static str {
+    pub fn label(self) -> String {
         match self {
-            Language::English => "English",
-            Language::Persian => "فارسی",
+            Language::English => "English".to_string(),
+            Language::Persian => to_visual("فارسی"),
         }
     }
 }
