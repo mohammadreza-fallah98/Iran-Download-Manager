@@ -25,12 +25,23 @@ function siteExcluded(url) {
   });
 }
 
-function isDownloadLink(url) {
+// File types that are worth a download badge even when they are not in the app's list
+const EXTRA_EXT = new Set([
+  "xpi", "crx", "msi", "msix", "msu", "cab", "deb", "rpm", "dmg", "pkg", "apk", "aab", "ipa", "iso", "img", "bin",
+  "torrent", "jar", "whl", "tar", "tgz", "xz", "zst", "lz", "7z", "rar", "zip", "gz", "bz2", "exe",
+  "epub", "mobi", "csv", "xls", "xlsx", "xlsm", "ppt", "pptx", "odt", "ods", "odp", "rtf", "pdf", "doc", "docx",
+  "mkv", "mp4", "webm", "mov", "avi", "flv", "m4v", "wmv", "mp3", "flac", "ogg", "wav", "aac", "m4a"
+]);
+
+function isDownloadLink(url, anchor) {
   if (!config || !config.intercept) return false;
   if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) return false;
+  if (siteExcluded(url)) return false;
+  // A link that asks for a download, or points to a file of a known type
+  if (anchor && anchor.hasAttribute("download")) return true;
   const ext = getExt(url);
   if (!ext) return false;
-  return config.auto_extensions.split(/\s+/).filter(Boolean).some(p => extMatches(p.toLowerCase(), ext)) && !siteExcluded(url);
+  return EXTRA_EXT.has(ext) || config.auto_extensions.split(/\s+/).filter(Boolean).some(p => extMatches(p.toLowerCase(), ext));
 }
 
 // True while the user holds the key that lets the browser handle the download itself
@@ -95,7 +106,7 @@ function injectButton(anchor) {
 
 function scanLinks() {
   document.querySelectorAll("a[href]").forEach(a => {
-    if (isDownloadLink(a.href)) injectButton(a);
+    if (isDownloadLink(a.href, a)) injectButton(a);
   });
 }
 

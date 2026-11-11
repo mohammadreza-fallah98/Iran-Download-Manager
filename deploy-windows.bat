@@ -76,13 +76,13 @@ echo [3/5] Copying the EXE to Release\EXE\...
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
 copy /y "%SOURCE_DIR%\target\release\iran-download-manager.exe" "%OUT_DIR%\%APP_NAME%.exe" >nul
 if errorlevel 1 (
-    echo ERROR: copying the EXE failed.
-    goto :fail
+    echo WARNING: could not replace %OUT_DIR%\%APP_NAME%.exe - close the running Iran Download Manager - also one started as administrator - and run this script again.
+    set EXE_FAILED=1
 )
 copy /y "%SOURCE_DIR%\target\release\iran-download-manager.exe" "%OUT_DIR%\%APP_NAME%-windows-%DATE_STAMP%-v%APP_VERSION%.exe" >nul
 if errorlevel 1 (
-    echo ERROR: copying the versioned EXE failed.
-    goto :fail
+    echo WARNING: copying the versioned EXE failed.
+    set EXE_FAILED=1
 )
 
 :: -- Extensions: unpacked copies -------------------------------------------
@@ -121,8 +121,8 @@ if exist "%~dp0Website\idm" (
     del /q "%SITE_DL%\*.zip" "%SITE_DL%\*.xpi" 2>nul
     powershell -NoProfile -Command "Compress-Archive -Force -Path '%OUT_DIR%\%APP_NAME%.exe' -DestinationPath '%OUT_DIR%\%APP_NAME%.zip'"
     copy /y "%OUT_DIR%\%APP_NAME%.zip" "%SITE_DL%\" >nul
-    copy /y "%CHROME_PKG%" "%SITE_DL%\" >nul
-    copy /y "%FIREFOX_PKG%" "%SITE_DL%\" >nul
+    copy /y "%CHROME_PKG%" "%SITE_DL%\%APP_NAME%-chrome.zip" >nul
+    copy /y "%FIREFOX_PKG%" "%SITE_DL%\%APP_NAME%-firefox.xpi" >nul
 )
 
 :: -- Done ------------------------------------------------------------------
@@ -135,6 +135,11 @@ echo   Firefox (unpacked):%EXT_OUT%\Firefox
 echo   Chrome package:    %CHROME_PKG%
 echo   Firefox package:   %FIREFOX_PKG%
 echo.
+if defined EXE_FAILED (
+    echo The extensions were built, but the EXE was NOT updated.
+    if /i not "%~1"=="nopause" pause
+    exit /b 1
+)
 if /i not "%~1"=="nopause" pause
 exit /b 0
 
