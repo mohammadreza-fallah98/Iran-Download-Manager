@@ -76,6 +76,14 @@
   code { direction: ltr; unicode-bidi: embed; background: #f1f5f1; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; font-family: Consolas, monospace; font-size: 13px; }
   .note { color: var(--dim); font-size: 14px; border-right: 3px solid var(--red); padding: 6px 14px; margin-top: 18px; background: rgba(230, 2, 4, .05); border-radius: 6px; }
 
+  .prods { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+  a.prod { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--gold); box-shadow: 0 6px 24px rgba(11, 40, 14, .06); transition: transform .15s, border-color .15s; }
+  a.prod:nth-child(even) { border-top-color: var(--red); }
+  a.prod:hover { transform: translateY(-3px); border-color: var(--gold); }
+  a.prod h3 { font-size: 18px; }
+  a.prod p { color: var(--dim); font-size: 14.5px; flex: 1; }
+  a.prod .go { color: var(--gold2); font-weight: 700; font-size: 14px; }
+  a.prod:nth-child(even) .go { color: var(--red); }
   details { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; }
   summary { cursor: pointer; font-weight: 700; }
   details p { color: var(--dim); margin-top: 8px; font-size: 14.5px; }
@@ -97,6 +105,7 @@
       <a href="#download">دانلود</a>
       <a href="#features">قابلیت‌ها</a>
       <a href="#install">نصب افزونه</a>
+      <a href="#products">محصولات</a>
       <a href="#faq">سؤال‌های متداول</a>
     </nav>
   </div>
@@ -187,6 +196,21 @@
         <li><div>روی یک لینک دانلود کلیک کنید؛ پنجره‌ی «اطلاعات فایل» برنامه باز می‌شود. برای دانلود با خود مرورگر، هنگام کلیک کلید <code>Alt</code> را نگه دارید.</div></li>
       </ol>
       <p class="note">افزونه فقط با برنامه‌ی روی همین کامپیوتر (آدرس <code>127.0.0.1</code>) حرف می‌زند و اطلاعاتی به اینترنت نمی‌فرستد.</p>
+    </div>
+  </section>
+
+  <section id="products">
+    <div class="wrap">
+      <h2>محصولات عصر نواندیشان اسراء</h2>
+      <p class="section-sub">محصولات آماده‌ی ما را مستقیم اجرا و امتحان کنید.</p>
+      <div class="prods">
+        <a class="prod" href="https://motionai.ir/"><h3>AI Studio</h3><p>استودیوی هوش مصنوعی</p><span class="go">ورود به محصول ←</span></a>
+        <a class="prod" href="https://haghai.ir/"><h3>AI Law</h3><p>وکیل هوش مصنوعی</p><span class="go">ورود به محصول ←</span></a>
+        <a class="prod" href="https://onlineshop.asratech.ir/"><h3>Online Shop</h3><p>فروشگاه اینترنتی</p><span class="go">ورود به محصول ←</span></a>
+        <a class="prod" href="https://negotiation.asratech.ir/"><h3>بازاری</h3><p>مربی هوش مصنوعی مذاکره</p><span class="go">ورود به محصول ←</span></a>
+        <a class="prod" href="https://tanyarai.ir/"><h3>AI Body</h3><p>مربی بدنسازی هوش مصنوعی</p><span class="go">ورود به محصول ←</span></a>
+        <a class="prod" href="https://idm.asratech.ir/"><h3>Iran Download Manager</h3><p>مدیر دانلود ایران</p><span class="go">ورود به محصول ←</span></a>
+      </div>
     </div>
   </section>
 
