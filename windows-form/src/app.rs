@@ -392,7 +392,7 @@ fn valid_time(t: &str) -> bool {
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>, screenshot: Option<PathBuf>, server_rx: Receiver<AddRequest>) -> Self {
         let shot = screenshot.map(|path| Shot { path, frames: 0 });
-        let data_path = if shot.is_some() { None } else { data_path() };
+        let data_path = if shot.is_some() { std::env::var_os("IDM_SHOT_DATA").map(PathBuf::from) } else { data_path() };
         let mut saved: SavedState = data_path.as_ref().and_then(|p| std::fs::read_to_string(p).ok()).and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
         saved.settings.run_on_startup = startup_is_registered();
         saved.settings.decrypt_secrets();
