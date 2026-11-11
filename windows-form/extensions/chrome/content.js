@@ -66,8 +66,8 @@ function injectButton(anchor) {
   const host = document.createElement("span");
   host.style.cssText = "display:inline-block !important; vertical-align:middle !important; margin-left:4px !important; pointer-events:auto !important; cursor:pointer !important;";
   const root = host.attachShadow({ mode: "closed" });
-  root.innerHTML = `
-    <style>
+  const style = document.createElement("style");
+  style.textContent = `
       :host { all: initial; }
       button {
         all: unset; box-sizing: border-box; display: inline-block;
@@ -77,9 +77,15 @@ function injectButton(anchor) {
       }
       button:hover { filter: brightness(1.2); transform: translateY(-1px); }
       button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
-    </style>
-    <button type="button" role="button" title="Download with Iran Download Manager">⬇ IDM</button>`;
-  root.querySelector("button").addEventListener("click", e => {
+  `;
+  // Built with DOM calls only
+  const button = document.createElement("button");
+  button.type = "button";
+  button.setAttribute("role", "button");
+  button.title = "Download with Iran Download Manager";
+  button.textContent = "⬇ IDM";
+  root.append(style, button);
+  button.addEventListener("click", e => {
     e.preventDefault();
     e.stopPropagation();
     sendDownload(anchor);

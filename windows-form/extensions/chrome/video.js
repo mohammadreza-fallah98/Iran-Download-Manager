@@ -19,8 +19,8 @@
     host = document.createElement("div");
     host.style.cssText = "position:fixed !important; z-index:2147483647 !important; display:none; pointer-events:auto !important; cursor:pointer !important;";
     root = host.attachShadow({ mode: "closed" });
-    root.innerHTML = `
-      <style>
+    const style = document.createElement("style");
+    style.textContent = `
         :host { all: initial; }
         .btn { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #ff6611;
                color: #fff; border-radius: 6px; font: 600 13px/18px sans-serif; cursor: pointer !important; box-shadow: 0 2px 8px rgba(0,0,0,.45);
@@ -34,13 +34,21 @@
         .item[disabled] { opacity: .5; cursor: not-allowed; }
         .item small { display: block; opacity: .7; word-break: break-all; }
         .toast { margin-top: 6px; padding: 6px 10px; background: #1f2330; color: #fff; border-radius: 6px; font: 12px/16px sans-serif; }
-      </style>
-      <button class="btn" type="button" title="Download with Iran Download Manager">⬇ Download this video</button>
-      <div class="panel" hidden></div>
-      <div class="toast" hidden></div>`;
-    root.querySelector(".btn").addEventListener("click", onButton);
-    panel = root.querySelector(".panel");
-    toast = root.querySelector(".toast");
+    `;
+    // Built with DOM calls only
+    const btn = document.createElement("button");
+    btn.className = "btn";
+    btn.type = "button";
+    btn.title = "Download with Iran Download Manager";
+    btn.textContent = "⬇ Download this video";
+    panel = document.createElement("div");
+    panel.className = "panel";
+    panel.hidden = true;
+    toast = document.createElement("div");
+    toast.className = "toast";
+    toast.hidden = true;
+    root.append(style, btn, panel, toast);
+    btn.addEventListener("click", onButton);
     host.addEventListener("mouseenter", () => clearTimeout(hideTimer));
     host.addEventListener("mouseleave", scheduleHide);
     document.documentElement.appendChild(host);
