@@ -139,6 +139,9 @@ struct RenameDlg {
 }
 
 pub struct App {
+    drag_anchor: Option<u64>,
+    last_clicked: Option<u64>,
+    size_col_x: Option<(f32, f32)>,
     queue_pick: Option<(Vec<u64>, u32)>,
     update_rx: Option<Receiver<Result<String, String>>>,
     refresh_check: Option<(u64, String, Receiver<Result<ProbeInfo, String>>)>,
@@ -430,6 +433,9 @@ impl App {
             statuses: HashMap::new(),
             add_url: None,
             notice: None,
+            drag_anchor: None,
+            last_clicked: None,
+            size_col_x: None,
             queue_pick: None,
             update_rx: None,
             refresh_check: None,
@@ -1133,6 +1139,10 @@ impl App {
     fn list(&mut self, ui: &mut egui::Ui) {
         let rows: Vec<Download> = self.downloads.iter().map(|h| h.d.lock().unwrap().clone()).filter(|d| self.matches_view(d)).collect();
         let mut clicked: Option<(u64, bool)> = None;
+        let mut clicked_shift = false;
+        let mut drag_start: Option<u64> = None;
+        let mut row_rects: Vec<(u64, egui::Rect)> = Vec::new();
+        let mut size_rect: Option<egui::Rect> = None;
         let mut double: Option<u64> = None;
         let mut context: Option<(u64, &'static str)> = None;
         let mut queue_move: Option<(u64, u32)> = None;
@@ -1144,7 +1154,7 @@ impl App {
         TableBuilder::new(ui)
             .striped(true)
             .resizable(true)
-            .sense(egui::Sense::click())
+            .sense(egui::Sense::click_and_drag())
             .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
             .column(Column::initial(290.0).at_least(120.0).clip(true))
             .column(Column::initial(85.0).at_least(50.0))
@@ -1157,9 +1167,12 @@ impl App {
             .header(22.0, |mut h| {
                 let hdr_color = widgets::palette(self.settings.theme).text_header;
                 for title in ["File Name", "Size", "Status", "Time left", "Transfer rate", "Last Try Date", "Queue", "Description"] {
-                    h.col(|ui| {
+                    let (rect, _) = h.col(|ui| {
                         ui.label(RichText::new(tr(title)).color(hdr_color).strong());
                     });
+                    if title == "Size" {
+                        size_rect = Some(rect);
+                    }
                 }
             })
             .body(|body| {
@@ -1200,8 +1213,13 @@ impl App {
                         [egui::pos2(r.min.x, r.max.y - 0.5), egui::pos2(r.max.x, r.max.y - 0.5)],
                         egui::Stroke::new(1.0_f32, sep_color),
                     );
+                    row_rects.push((d.id, resp.rect));
+                    if resp.drag_started() {
+                        drag_start = Some(d.id);
+                    }
                     if resp.clicked() {
                         clicked = Some((d.id, resp.ctx.input(|i| i.modifiers.command)));
+                        clicked_shift = resp.ctx.input(|i| i.modifiers.shift);
                     }
                     if resp.double_clicked() {
                         double = Some(d.id);
@@ -1248,12 +1266,54 @@ impl App {
                     });
                 });
             });
+        if let Some(r) = size_rect {
+            self.size_col_x = Some((r.left(), r.width()));
+        }
+        let index_of = |id: u64| rows.iter().position(|d| d.id == id);
         if let Some((id, add)) = clicked {
-            if !add {
-                self.selected.clear();
+            match (clicked_shift, self.last_clicked.and_then(index_of), index_of(id)) {
+                // Shift+click selects the whole range from the last clicked row
+                (true, Some(a), Some(b)) => {
+                    if !add {
+                        self.selected.clear();
+                    }
+                    for d in &rows[a.min(b)..=a.max(b)] {
+                        self.selected.insert(d.id);
+                    }
+                }
+                _ => {
+                    if add {
+                        if !self.selected.insert(id) {
+                            self.selected.remove(&id);
+                        }
+                    } else {
+                        self.selected.clear();
+                        self.selected.insert(id);
+                    }
+                    self.last_clicked = Some(id);
+                }
             }
-            if !self.selected.insert(id) {
-                self.selected.remove(&id);
+        }
+        // Drag over the rows with the mouse: everything between the first row and the one under the pointer
+        if let Some(id) = drag_start {
+            self.drag_anchor = Some(id);
+            self.last_clicked = Some(id);
+        }
+        if let Some(anchor) = self.drag_anchor {
+            let (down, pos) = ui.input(|i| (i.pointer.primary_down(), i.pointer.latest_pos()));
+            if !down {
+                self.drag_anchor = None;
+            } else if let (Some(pos), Some(a)) = (pos, index_of(anchor)) {
+                if !row_rects.is_empty() {
+                    let cur = row_rects.iter().position(|(_, r)| pos.y >= r.top() && pos.y <= r.bottom()).unwrap_or(if pos.y < row_rects[0].1.top() { 0 } else { row_rects.len() - 1 });
+                    let b = index_of(row_rects[cur].0).unwrap_or(a);
+                    if !ui.input(|i| i.modifiers.command) {
+                        self.selected.clear();
+                    }
+                    for d in &rows[a.min(b)..=a.max(b)] {
+                        self.selected.insert(d.id);
+                    }
+                }
             }
         }
         if let Some(id) = double {
@@ -2630,7 +2690,11 @@ impl eframe::App for App {
             let id = *self.selected.iter().next().unwrap();
             self.open_rename(id);
         }
-        if ctx.input(|i| i.key_pressed(egui::Key::Delete)) && !self.selected.is_empty() && self.confirm_delete.is_none() {
+        if ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::A)) && !ctx.wants_keyboard_input() {
+            let ids: Vec<u64> = self.downloads.iter().filter_map(|h| { let d = h.d.lock().unwrap(); self.matches_view(&d).then_some(d.id) }).collect();
+            self.selected = ids.into_iter().collect();
+        }
+        if ctx.input(|i| i.key_pressed(egui::Key::Delete)) && !ctx.wants_keyboard_input() && !self.selected.is_empty() && self.confirm_delete.is_none() {
             self.confirm_delete = Some((self.selected.iter().copied().collect(), false));
         }
         self.tick(ctx);
@@ -2652,9 +2716,19 @@ impl eframe::App for App {
                     if !self.matches_view(&d) { return (t, u); }
                     match d.size { Some(s) => (t + s, u), None => (t, u + 1) }
                 });
-                ui.separator();
                 let suffix = if unknown > 0 { format!(" (+{unknown} unknown)") } else { String::new() };
-                ui.label(egui::RichText::new(format!("{}: {}{suffix}", tr("Total size"), widgets::fmt_size(total))).color(pal.text_dim));
+                let total_text = egui::RichText::new(format!("{}: {}{suffix}", tr("Total size"), widgets::fmt_size(total))).color(pal.text_dim);
+                match self.size_col_x {
+                    // placed right under the Size column
+                    Some((x, _)) => {
+                        let rect = egui::Rect::from_min_size(egui::pos2(x, ui.min_rect().top()), egui::vec2(260.0, ui.min_rect().height().max(18.0)));
+                        ui.allocate_new_ui(egui::UiBuilder::new().max_rect(rect), |ui| ui.label(total_text));
+                    }
+                    None => {
+                        ui.separator();
+                        ui.label(total_text);
+                    }
+                }
                 if speed > 0.0 {
                     ui.separator();
                     ui.label(egui::RichText::new(widgets::fmt_speed(speed)).color(pal.progress_fill));
