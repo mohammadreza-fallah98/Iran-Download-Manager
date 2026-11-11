@@ -12,6 +12,9 @@ set REMOTE=%IDM_SERVER_USER%@%IDM_SERVER_HOST%
 set SITE_DIR=%~dp0Website\idm
 set CONF=%~dp0Website\idm.asratech.ir.conf
 set WEB_ROOT=/var/www/idm
+:: Use the deploy key (made once with ssh-keygen) when it exists; otherwise ssh asks for the password
+set SSH_OPTS=-o StrictHostKeyChecking=accept-new
+if exist "%USERPROFILE%\.ssh\idm_deploy_ed25519" set SSH_OPTS=%SSH_OPTS% -i "%USERPROFILE%\.ssh\idm_deploy_ed25519"
 
 where ssh >nul 2>&1
 if errorlevel 1 (
@@ -24,23 +27,23 @@ if not exist "%SITE_DIR%\index.html" (
 )
 
 echo [1/4] Creating %WEB_ROOT% on the server...
-ssh %REMOTE% "mkdir -p %WEB_ROOT%/downloads %WEB_ROOT%/fonts"
+ssh %SSH_OPTS% %REMOTE% "mkdir -p %WEB_ROOT%/downloads %WEB_ROOT%/fonts"
 if errorlevel 1 goto :fail
 
 echo [2/4] Uploading the site files...
-scp -r "%SITE_DIR%\index.html" "%SITE_DIR%\logo.png" "%REMOTE%:%WEB_ROOT%/"
+scp %SSH_OPTS% -r "%SITE_DIR%\index.html" "%SITE_DIR%\logo.png" "%REMOTE%:%WEB_ROOT%/"
 if errorlevel 1 goto :fail
-scp "%SITE_DIR%\fonts\Vazirmatn-Regular.ttf" "%REMOTE%:%WEB_ROOT%/fonts/"
+scp %SSH_OPTS% "%SITE_DIR%\fonts\Vazirmatn-Regular.ttf" "%REMOTE%:%WEB_ROOT%/fonts/"
 if errorlevel 1 goto :fail
-scp "%SITE_DIR%\downloads\*" "%REMOTE%:%WEB_ROOT%/downloads/"
+scp %SSH_OPTS% "%SITE_DIR%\downloads\*" "%REMOTE%:%WEB_ROOT%/downloads/"
 if errorlevel 1 goto :fail
 
 echo [3/4] Installing the nginx site...
-scp "%CONF%" "%REMOTE%:/etc/nginx/conf.d/idm.asratech.ir.conf"
+scp %SSH_OPTS% "%CONF%" "%REMOTE%:/etc/nginx/conf.d/idm.asratech.ir.conf"
 if errorlevel 1 goto :fail
 
 echo [4/4] Testing and reloading nginx...
-ssh %REMOTE% "chown -R www-data:www-data %WEB_ROOT% 2>/dev/null || true; nginx -t && systemctl reload nginx"
+ssh %SSH_OPTS% %REMOTE% "chown -R www-data:www-data %WEB_ROOT% 2>/dev/null || true; nginx -t && systemctl reload nginx"
 if errorlevel 1 goto :fail
 
 echo.
