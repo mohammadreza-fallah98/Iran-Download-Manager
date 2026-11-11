@@ -805,10 +805,8 @@ impl App {
                 continue;
             }
             if net::looks_like_url(&req.url) && self.file_info.is_none() {
+                // Only the info window comes up; the main window stays where it is (even in the tray)
                 self.open_file_info(req.url.clone());
-                ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
-                ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
-                self.force_top_frames = 3;
                 // Pre-fill description with referrer so the user can see where it came from
                 if let Some(fi) = self.file_info.as_mut() {
                     if !req.description.is_empty() {
@@ -2590,7 +2588,7 @@ impl eframe::App for App {
                     // allow normal close
                 } else {
                     ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+                    crate::tray::hide_main();
                 }
             }
         }

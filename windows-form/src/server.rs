@@ -97,7 +97,7 @@ fn run(tx: Sender<AddRequest>) {
                 crate::net::set_extra(&r.url, crate::net::Extra { referer: r.referrer.clone(), cookies: r.cookies.clone(), user_agent: r.user_agent.clone() });
                 let _ = tx.send(r);
                 // update() does not run while the window is hidden in the tray, so show it from here
-                crate::tray::bring_to_front();
+                crate::tray::wake();
                 let _ = req.respond(cors_response(&origin, tiny_http::Response::from_string(r#"{"ok":true}"#).with_header(json_header())));
             }
             _ => {

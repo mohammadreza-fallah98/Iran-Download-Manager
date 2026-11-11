@@ -27,10 +27,16 @@ pub fn raise_window(title: &str) {
     let _ = title;
 }
 
-/// Restores the main window and brings it in front of everything, even from the tray.
-pub fn bring_to_front() {
+/// Sends the main window to the tray (kept alive off screen so dialogs can still be shown).
+pub fn hide_main() {
     #[cfg(windows)]
-    unsafe { win::request_show(); }
+    unsafe { win::hide_main(); }
+}
+
+/// Wakes the UI loop (it sleeps while the window is hidden) without showing the main window.
+pub fn wake() {
+    #[cfg(windows)]
+    win::wake_ui();
 }
 
 #[cfg(not(windows))]
@@ -71,6 +77,19 @@ mod win {
     const SW_RESTORE: i32        = 9;
     const HWND_TOPMOST: isize    = -1;
     const HWND_NOTOPMOST: isize  = -2;
+    const SW_HIDE: i32           = 0;
+    const SW_SHOWNA: i32         = 8;
+    const GWL_EXSTYLE: i32       = -20;
+    const WS_EX_APPWINDOW: u32   = 0x0004_0000;
+    const SWP_NOZORDER: u32      = 0x0004;
+    const SWP_NOACTIVATE: u32    = 0x0010;
+    const OFFSCREEN: i32         = -32000;
+    static MAIN_HIDDEN: AtomicBool = AtomicBool::new(false);
+    static SAVED_X: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(0);
+    static SAVED_Y: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(0);
+
+    #[repr(C)]
+    struct RECT { left: i32, top: i32, right: i32, bottom: i32 }
     const SWP_NOSIZE: u32        = 0x0001;
     const SWP_NOMOVE: u32        = 0x0002;
 
@@ -152,6 +171,9 @@ mod win {
         fn SetForegroundWindow(hwnd: usize) -> i32;
         fn FindWindowW(cls: *const u16, name: *const u16) -> usize;
         fn ShowWindow(hwnd: usize, cmd: i32) -> i32;
+        fn GetWindowRect(hwnd: usize, rect: *mut RECT) -> i32;
+        fn GetWindowLongPtrW(hwnd: usize, index: i32) -> isize;
+        fn SetWindowLongPtrW(hwnd: usize, index: i32, value: isize) -> isize;
         fn GetForegroundWindow() -> usize;
         fn GetWindowThreadProcessId(hwnd: usize, pid: *mut u32) -> u32;
         fn AttachThreadInput(id_attach: u32, id_attach_to: u32, attach: i32) -> i32;
@@ -201,12 +223,19 @@ mod win {
 
     // Hidden eframe windows get no update() calls, so restore the native window
     // directly from the tray thread instead of waiting for the flag to be polled.
+    pub(super) fn wake_ui() {
+        if let Some(g) = TRAY_GLOBAL.get() {
+            g.ctx.request_repaint();
+        }
+    }
+
     pub(super) unsafe fn request_show() {
         if let Some(g) = TRAY_GLOBAL.get() {
             g.show_requested.store(true, Ordering::Relaxed);
             let title = w("Iran Download Manager");
             let main = FindWindowW(std::ptr::null(), title.as_ptr());
             if main != 0 {
+                unhide_main(main);
                 ShowWindow(main, SW_SHOW);
                 ShowWindow(main, SW_RESTORE);
                 raise_hwnd(main);
@@ -227,6 +256,36 @@ mod win {
         SetForegroundWindow(hwnd);
         BringWindowToTop(hwnd);
         if fg_thread != 0 && fg_thread != me { AttachThreadInput(me, fg_thread, 0); }
+    }
+
+    /// "Hides" the main window in the tray by moving it far off screen and taking it out of the
+    /// taskbar. A truly hidden window would stop the UI loop, and then no dialog could be shown.
+    pub(super) unsafe fn hide_main() {
+        let title = w("Iran Download Manager");
+        let main = FindWindowW(std::ptr::null(), title.as_ptr());
+        if main == 0 || MAIN_HIDDEN.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let mut r = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+        GetWindowRect(main, &mut r);
+        SAVED_X.store(r.left, Ordering::SeqCst);
+        SAVED_Y.store(r.top, Ordering::SeqCst);
+        ShowWindow(main, SW_HIDE);
+        let ex = GetWindowLongPtrW(main, GWL_EXSTYLE);
+        SetWindowLongPtrW(main, GWL_EXSTYLE, (ex | WS_EX_TOOLWINDOW as isize) & !(WS_EX_APPWINDOW as isize));
+        SetWindowPos(main, 0, OFFSCREEN, OFFSCREEN, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        ShowWindow(main, SW_SHOWNA);
+    }
+
+    /// Undoes `hide_main`: back on screen and back in the taskbar.
+    unsafe fn unhide_main(main: usize) {
+        if !MAIN_HIDDEN.swap(false, Ordering::SeqCst) {
+            return;
+        }
+        let ex = GetWindowLongPtrW(main, GWL_EXSTYLE);
+        ShowWindow(main, SW_HIDE);
+        SetWindowLongPtrW(main, GWL_EXSTYLE, (ex & !(WS_EX_TOOLWINDOW as isize)) | WS_EX_APPWINDOW as isize);
+        SetWindowPos(main, 0, SAVED_X.load(Ordering::SeqCst), SAVED_Y.load(Ordering::SeqCst), 0, 0, SWP_NOSIZE | SWP_NOZORDER);
     }
 
     /// Raises the window with this exact title (once, without keeping it on top).
