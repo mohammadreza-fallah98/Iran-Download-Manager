@@ -1,0 +1,10 @@
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\version_check-60b1cdd1fd98f850.d: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\version.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\channel.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\date.rs
+
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\libversion_check-60b1cdd1fd98f850.rlib: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\version.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\channel.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\date.rs
+
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\libversion_check-60b1cdd1fd98f850.rmeta: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\version.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\channel.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\date.rs
+
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\lib.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\version.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\channel.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\version_check-0.9.5\src\date.rs:

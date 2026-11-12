@@ -1,0 +1,11 @@
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\zeroize-82e0c2410f9f04e6.d: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\x86.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\barrier.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\stack.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\../README.md
+
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\libzeroize-82e0c2410f9f04e6.rlib: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\x86.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\barrier.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\stack.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\../README.md
+
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\libzeroize-82e0c2410f9f04e6.rmeta: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\x86.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\barrier.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\stack.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\../README.md
+
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\lib.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\x86.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\barrier.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\stack.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zeroize-1.9.1\src\../README.md:

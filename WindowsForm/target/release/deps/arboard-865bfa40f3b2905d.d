@@ -1,0 +1,10 @@
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\arboard-865bfa40f3b2905d.d: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\common.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\platform\mod.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\platform\windows.rs
+
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\libarboard-865bfa40f3b2905d.rlib: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\common.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\platform\mod.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\platform\windows.rs
+
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\libarboard-865bfa40f3b2905d.rmeta: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\common.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\platform\mod.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\platform\windows.rs
+
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\lib.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\common.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\platform\mod.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\platform\windows.rs:

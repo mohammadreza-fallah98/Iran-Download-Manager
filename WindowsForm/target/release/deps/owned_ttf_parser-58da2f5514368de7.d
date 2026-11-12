@@ -1,0 +1,10 @@
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\owned_ttf_parser-58da2f5514368de7.d: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\convert.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\owned.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\preparse.rs
+
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\libowned_ttf_parser-58da2f5514368de7.rlib: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\convert.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\owned.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\preparse.rs
+
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\libowned_ttf_parser-58da2f5514368de7.rmeta: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\convert.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\owned.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\preparse.rs
+
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\lib.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\convert.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\owned.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\owned_ttf_parser-0.25.1\src\preparse.rs:

@@ -1,0 +1,11 @@
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\WindowsForm\target\debug\deps\utf8_iter-b84ded06ac77c47c.d: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\basic.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\handler.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\indices.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\macros.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\report.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\str.rs
+
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\WindowsForm\target\debug\deps\libutf8_iter-b84ded06ac77c47c.rmeta: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\basic.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\handler.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\indices.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\macros.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\report.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\str.rs
+
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\lib.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\basic.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\handler.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\indices.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\macros.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\report.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\utf8_iter-1.1.0\src\str.rs:

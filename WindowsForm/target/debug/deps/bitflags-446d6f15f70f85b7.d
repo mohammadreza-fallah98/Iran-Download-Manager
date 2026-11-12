@@ -1,0 +1,11 @@
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\WindowsForm\target\debug\deps\bitflags-446d6f15f70f85b7.d: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\iter.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\parser.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\traits.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\public.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\internal.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\external.rs
+
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\WindowsForm\target\debug\deps\libbitflags-446d6f15f70f85b7.rmeta: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\iter.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\parser.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\traits.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\public.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\internal.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\external.rs
+
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\lib.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\iter.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\parser.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\traits.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\public.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\internal.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bitflags-2.13.2\src\external.rs:

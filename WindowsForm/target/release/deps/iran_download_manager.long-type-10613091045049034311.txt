@@ -1,0 +1,1 @@
+std::sync::MutexGuard<'_, std::option::Option<HashMap<std::string::String, (Instant, std::option::Option<std::string::String>)>>>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iran Download Manager</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 320px; font-family: Segoe UI, sans-serif; background: #f5f7fa; color: #222; }
+  .header { background: #1a73e8; color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+  .header img { width: 24px; height: 24px; }
+  .header h1 { font-size: 14px; font-weight: 600; }
+  .body { padding: 14px 16px; }
+  label { display: block; font-size: 12px; color: #555; margin-bottom: 4px; }
+  input[type=text] { width: 100%; padding: 7px 9px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; outline: none; }
+  input[type=text]:focus { border-color: #1a73e8; }
+  .btn { display: block; width: 100%; margin-top: 10px; padding: 9px; background: #1a73e8; color: #fff; border: none; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn:hover { background: #1558b0; }
+  .msg { margin-top: 10px; font-size: 12px; padding: 6px 10px; border-radius: 4px; display: none; }
+  .msg.ok  { background: #e6f4ea; color: #1e6823; display: block; }
+  .msg.err { background: #fce8e6; color: #c5221f; display: block; }
+  .footer { padding: 8px 16px; border-top: 1px solid #e0e0e0; font-size: 11px; color: #888; }
+</style>
+</head>
+<body>
+<div class="header">
+  <img src="icons/icon48.png" alt="">
+  <h1>Iran Download Manager</h1>
+</div>
+<div class="body">
+  <label for="url">Download URL</label>
+  <input type="text" id="url" placeholder="https://...">
+  <button class="btn" id="add">Add to IDM</button>
+  <div class="msg" id="msg"></div>
+</div>
+<div class="footer">IDM must be running on this computer.</div>
+<script src="popup.js"></script>
+</body>
+</html>

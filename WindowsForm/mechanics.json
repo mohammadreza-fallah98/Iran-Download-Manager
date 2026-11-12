@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "values": [
+    {"name": "part takeover threshold", "group": "downloading", "value": 50, "unit": "bytes", "source": "function 0x5a4df0"},
+    {"name": "minimum speed stored", "group": "downloading", "value": 100, "unit": "bytes/s", "source": "function 0x5ba210"},
+    {"name": "speed limiter per download", "group": "downloading", "value": true, "source": "function 0x5b9dd0"},
+    {"name": "default connections", "group": "downloading", "value": 8, "estimated": true},
+    {"name": "connection choices", "group": "downloading", "value": "1 2 4 8 16 24 32", "estimated": true},
+    {"name": "max downloads at once in queue", "group": "queues", "value": 4, "estimated": true},
+    {"name": "minimum split size", "group": "downloading", "value": 262144, "unit": "bytes", "estimated": true},
+    {"name": "retries per connection", "group": "downloading", "value": 5, "estimated": true},
+    {"name": "watch clipboard by default", "group": "options", "value": true, "estimated": true},
+    {"name": "size units", "group": "ui", "value": "KB MB GB, 2 decimals", "estimated": true},
+    {"name": "time left format", "group": "ui", "value": "%d sec / %d min %d sec", "source": "strings 0x6b8bb0 0x6b8bb8"},
+    {"name": "save folder pattern", "group": "categories", "value": "%s\\Downloads\\%s", "source": "string 0x69e30c, function 0x4c8260"},
+    {"name": "Compressed extensions", "group": "categories", "value": "zip rar r0* r1* arj gz sit sitx sea ace bz2 7z", "source": "function 0x4c94f0"},
+    {"name": "Documents extensions", "group": "categories", "value": "doc pdf ppt pps docx pptx", "source": "function 0x4c94f0"},
+    {"name": "Music extensions", "group": "categories", "value": "mp3 wav wma mpa ram ra aac aif m4a tsa", "source": "function 0x4c94f0"},
+    {"name": "Programs extensions", "group": "categories", "value": "exe msi", "source": "function 0x4c94f0"},
+    {"name": "Video extensions", "group": "categories", "value": "avi mpg mpe mpeg asf wmv mov qt rm mp4 flv m4v webm ogv ogg mkv ts tsv", "source": "function 0x4c94f0"},
+    {"name": "toolbar buttons", "group": "ui", "value": "Add URL, Resume, Stop, Stop All, Delete, Options, Scheduler, Start Queue, Stop Queue, Grabber, Tell a Friend", "source": "function 0x4ec900"},
+    {"name": "list columns", "group": "ui", "value": "File Name, Size, Status, Time left, Transfer rate, Last Try Date, Description", "source": "function 0x4ec900"}
+  ]
+}

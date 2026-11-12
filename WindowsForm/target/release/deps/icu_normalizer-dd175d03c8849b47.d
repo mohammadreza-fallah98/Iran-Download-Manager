@@ -1,0 +1,10 @@
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\icu_normalizer-dd175d03c8849b47.d: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\properties.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\provider.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\uts46.rs
+
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\libicu_normalizer-dd175d03c8849b47.rlib: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\properties.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\provider.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\uts46.rs
+
+I:\MyFile\KarNesfe\Develop\Iran-Download-Manager\windows-form\target\release\deps\libicu_normalizer-dd175d03c8849b47.rmeta: D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\lib.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\properties.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\provider.rs D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\uts46.rs
+
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\lib.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\properties.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\provider.rs:
+D:\Programming\Rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.4.0\src\uts46.rs:
