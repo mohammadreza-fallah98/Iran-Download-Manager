@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="windows-form/assets/icon.png" width="120" alt="Iran Download Manager Logo"/>
+<img src="WindowsForm/assets/icon.png" width="120" alt="Iran Download Manager Logo"/>
 
 # Iran Download Manager — مدیر دانلود ایران
 
@@ -63,7 +63,7 @@
 
 ## 📸 تصویر / Screenshot
 
-![screenshot](windows-form/assets/screenshot.png)
+![screenshot](WindowsForm/assets/screenshot.png)
 
 ---
 
@@ -131,7 +131,7 @@ deploy-windows.bat        # tests + release exe + extension packages → Release
 ```
 
 ```bash
-cd windows-form
+cd WindowsForm
 cargo run                 # development / توسعه
 cargo test --release      # unit tests / تست‌ها
 cargo build --release     # target/release/iran-download-manager.exe
@@ -151,7 +151,7 @@ cargo build --release     # target/release/iran-download-manager.exe
 
 ```
 Iran-Download-Manager/
-├── windows-form/            Rust + egui desktop app / برنامه‌ی دسکتاپ
+├── WindowsForm/             Rust + egui desktop app / برنامه‌ی دسکتاپ
 │   ├── src/
 │   │   ├── main.rs          Entry point / نقطه‌ی ورود
 │   │   ├── app.rs           UI, dialogs, options, queues / رابط کاربری
@@ -169,6 +169,7 @@ Iran-Download-Manager/
 │   │   └── widgets.rs       Theme, icons, custom widgets
 │   ├── assets/              Icon, font, screenshot
 │   └── extensions/          chrome/ and firefox/
+├── Docs/                    BUSINESS.md + ARCHITECTURE_WindowsForm.md
 ├── Website/                 idm.asratech.ir landing page + nginx config
 ├── Release/                 Built exe and extension packages
 ├── run-frontend.bat         Dev run
@@ -183,7 +184,7 @@ Iran-Download-Manager/
 - وضعیت هر ۳ ثانیه با نوشتن اتمی (`tmp → rename`) در `%APPDATA%\IranDownloadManager\downloads.json` ذخیره می‌شود.
 - افزونه‌ها با `POST /add` و `GET /config` به `http://127.0.0.1:6800` وصل می‌شوند.
 - رمزها فقط به‌صورت رمزنگاری‌شده با DPAPI ذخیره می‌شوند؛ کوکی مرورگر فقط در حافظه می‌ماند.
-- جزئیات کامل: [`windows-form/ARCHITECTURE.md`](windows-form/ARCHITECTURE.md) و [`BUSINESS.md`](BUSINESS.md).
+- جزئیات کامل: [`Docs/ARCHITECTURE_WindowsForm.md`](Docs/ARCHITECTURE_WindowsForm.md) و [`Docs/BUSINESS.md`](Docs/BUSINESS.md).
 
 </div>
 
@@ -192,7 +193,7 @@ Iran-Download-Manager/
 - State is persisted every 3 seconds with an atomic `tmp → rename` write to `%APPDATA%\IranDownloadManager\downloads.json`.
 - Extensions talk to `http://127.0.0.1:6800` with `POST /add` and `GET /config`.
 - Passwords are stored only encrypted with DPAPI; browser cookies stay in memory.
-- Full details: [`windows-form/ARCHITECTURE.md`](windows-form/ARCHITECTURE.md) and [`BUSINESS.md`](BUSINESS.md).
+- Full details: [`Docs/ARCHITECTURE_WindowsForm.md`](Docs/ARCHITECTURE_WindowsForm.md) and [`Docs/BUSINESS.md`](Docs/BUSINESS.md).
 
 ---
 

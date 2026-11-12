@@ -1,15 +1,15 @@
 /Resource/
 /.vs/
-windows-form/target/
+WindowsForm/target/
 .env*
 !.env.example
 
-windows-form/MECHANICS.md
-windows-form/mechanics.json
-windows-form/shots/
+WindowsForm/MECHANICS.md
+WindowsForm/mechanics.json
+WindowsForm/shots/
 
-# dated copies made by deploy-windows.bat (the stable IranDownloadManager.exe is kept)
-Release/EXE/IranDownloadManager-windows-*.exe
+# build output of deploy-*.bat
+/Release/
 
 # built by deploy-windows.bat for the website
 Website/idm/downloads/

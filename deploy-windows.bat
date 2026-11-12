@@ -12,7 +12,7 @@ setlocal EnableDelayedExpansion
 
 :: -- Config ----------------------------------------------------------------
 set APP_NAME=IranDownloadManager
-set SOURCE_DIR=%~dp0windows-form
+set SOURCE_DIR=%~dp0WindowsForm
 set EXT_DIR=%SOURCE_DIR%\extensions
 set OUT_DIR=%~dp0Release\EXE
 set EXT_OUT=%~dp0Release\Extensions

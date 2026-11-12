@@ -2,6 +2,47 @@
 
 این پروژه سرور ندارد؛ تمام منطق داخل یک اپلیکیشن دسکتاپ (Rust + egui) است. افزونه‌های مرورگر از طریق یک HTTP server محلی با برنامه حرف می‌زنند.
 
+## ۰-الف) خلاصه‌ی فنی و نمودار کلی
+
+| مورد | مقدار |
+|---|---|
+| زبان / runtime | Rust (edition 2021)، برنامه‌ی native ویندوز (بدون runtime جدا) |
+| UI | `eframe`/`egui` 0.31 |
+| دیتابیس | ندارد؛ فایل JSON در `%APPDATA%\IranDownloadManager\downloads.json` |
+| زیرساخت داده | بدون SQL، Redis، صف یا دیتابیس وکتور |
+| وب‌سایت | صفحه‌ی ثابت روی nginx (`idm.asratech.ir`) برای دانلود برنامه و افزونه‌ها |
+
+```mermaid
+flowchart LR
+    U([کاربر]) -->|استفاده| APP[برنامه‌ی ویندوز<br/>Rust + egui]
+    EXT[افزونه Chrome / Firefox] -->|لینک و ویدیو از طریق HTTP محلی :6800| APP
+    APP -->|دانلود چندتکه‌ای HTTP/HTTPS و FTP| NET[(سرورهای دانلود)]
+    APP -->|HLS / DASH قطعه‌ها| NET
+    APP -->|ذخیره‌ی لیست و تنظیمات| JSON[(downloads.json)]
+    APP -->|بررسی نسخه‌ی جدید| GH[GitHub Releases API]
+    U -->|دریافت exe و افزونه‌ها| WEB
+```
+
+## ۰-ب) پورت‌ها و نحوه‌ی بالا آمدن
+
+| محیط | چه چیزی بالا می‌آید | آدرس |
+|---|---|---|
+| Development | `run-frontend.bat` (`cargo run`) | سرور محلی افزونه‌ها `127.0.0.1:6800` |
+| Production | exe نصب‌شده (`Release\EXE`) | همان `127.0.0.1:6800` (فقط loopback، پورت در `server.rs`) |
+| وب‌سایت | nginx روی سرور لینوکس | `https://idm.asratech.ir` |
+
+Swagger و health ندارد؛ قرارداد HTTP محلی در بخش «قرارداد HTTP محلی» آمده است.
+
+## ۰-ج) فایل‌های build/publish/اجرا در ریشه
+
+| فایل | کار |
+|---|---|
+| `run-frontend.bat` | اجرای برنامه روی لوکال با `cargo run` داخل `WindowsForm\` (نام «frontend» قدیمی است؛ پروژه فقط یک بخش دارد) |
+| `deploy-windows.bat` | تست‌ها، build، ساخت exe با نسخه‌ی `Cargo.toml` در `Release\EXE` و بسته‌های افزونه‌ها در `Release\Extensions` (`nopause` اختیاری) |
+| `deploy-linux-website.bat` | آپلود صفحه‌ی `Website\idm`، فایل‌های دانلود و کانفیگ nginx روی سرور و reload (نیاز به OpenSSH؛ `IDM_SERVER_HOST`/`IDM_SERVER_USER` اختیاری) |
+
+`Release\` و `Resource\` در `.gitignore` هستند و commit نمی‌شوند.
+
 ## Stack
 
 | بخش | انتخاب |
