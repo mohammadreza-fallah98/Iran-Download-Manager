@@ -69,10 +69,6 @@ pub fn extension_matches(pattern: &str, ext: &str) -> bool {
     }
 }
 
-pub fn is_known_file_type(file_name: &str) -> bool {
-    Category::for_file(file_name) != Category::General
-}
-
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Status {
     Stopped,
@@ -105,6 +101,16 @@ impl Part {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HlsState {
+    pub total: usize,
+    pub done: usize,
+    pub bytes: u64,
+    /// Segments are fMP4 (init + fragments), so the result is an .mp4.
+    #[serde(default)]
+    pub fragmented: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Download {
     pub id: u64,
     pub url: String,
@@ -120,6 +126,22 @@ pub struct Download {
     pub connections: u32,
     pub speed_limit_kbps: Option<u32>,
     pub in_queue: bool,
+    #[serde(default)]
+    pub queue_id: u32,
+    /// Page the link came from; some sites refuse downloads without it.
+    #[serde(default)]
+    pub referer: String,
+    #[serde(default)]
+    pub user_agent: String,
+    /// Set for HLS streams: progress is counted in segments.
+    #[serde(default)]
+    pub hls: Option<HlsState>,
+    /// Folder holding the unfinished file; `None` means next to the final file.
+    #[serde(default)]
+    pub temp_dir: Option<PathBuf>,
+    /// `Last-Modified` of the file on the server.
+    #[serde(default)]
+    pub server_date: Option<String>,
     pub message: String,
     pub last_speed: f64,
     #[serde(skip)]
@@ -130,7 +152,10 @@ pub struct Download {
 
 impl Download {
     pub fn downloaded(&self) -> u64 {
-        self.parts.iter().map(|p| p.pos - p.start).sum()
+        match &self.hls {
+            Some(h) => h.bytes,
+            None => self.parts.iter().map(|p| p.pos - p.start).sum(),
+        }
     }
 
     pub fn final_path(&self) -> PathBuf {
@@ -138,7 +163,11 @@ impl Download {
     }
 
     pub fn temp_path(&self) -> PathBuf {
-        self.save_dir.join(format!("{}.part", self.file_name))
+        match &self.temp_dir {
+            // the id keeps two files with the same name apart in a shared folder
+            Some(dir) => dir.join(format!("{}-{}.part", self.id, self.file_name)),
+            None => self.save_dir.join(format!("{}.part", self.file_name)),
+        }
     }
 
     pub fn is_running(&self) -> bool {
@@ -146,6 +175,9 @@ impl Download {
     }
 
     pub fn progress(&self) -> Option<f32> {
+        if let Some(h) = self.hls.as_ref().filter(|h| h.total > 0) {
+            return Some(if self.status == Status::Complete { 1.0 } else { h.done as f32 / h.total as f32 });
+        }
         match (self.status, self.size) {
             (Status::Complete, _) => Some(1.0),
             (_, Some(s)) if s > 0 => Some(self.downloaded() as f32 / s as f32),
@@ -154,6 +186,14 @@ impl Download {
     }
 
     pub fn time_left_secs(&self) -> Option<u64> {
+        if let Some(h) = self.hls.as_ref().filter(|h| h.total > 0 && h.done > 0) {
+            // Estimated from the average segment size
+            let per_seg = h.bytes as f64 / h.done as f64;
+            if self.speed < 1.0 || !self.is_running() {
+                return None;
+            }
+            return Some((per_seg * (h.total - h.done) as f64 / self.speed) as u64);
+        }
         let size = self.size?;
         if self.speed < 1.0 || !self.is_running() {
             return None;
@@ -207,6 +247,242 @@ pub struct Settings {
     pub run_on_startup: bool,
     #[serde(default)]
     pub category_dirs: HashMap<String, PathBuf>,
+    #[serde(default = "default_true")]
+    pub show_start_dialog: bool,
+    #[serde(default)]
+    pub add_to_queue_only: bool,
+    #[serde(default = "default_true")]
+    pub show_complete_dialog: bool,
+    #[serde(default = "default_auto_extensions")]
+    pub auto_extensions: String,
+    #[serde(default = "default_excluded_sites")]
+    pub excluded_sites: String,
+    #[serde(default)]
+    pub proxy: ProxyConfig,
+    #[serde(default)]
+    pub server_limits: Vec<ServerLimit>,
+    #[serde(default)]
+    pub sounds: Sounds,
+    #[serde(default)]
+    pub credentials: Vec<Credential>,
+    #[serde(default)]
+    pub quota: Quota,
+    #[serde(default = "default_queues")]
+    pub queues: Vec<QueueDef>,
+    /// Overall speed limit in KB/s for all downloads together; 0 means no limit.
+    #[serde(default)]
+    pub global_speed_limit_kbps: u32,
+    #[serde(default)]
+    pub duplicate_action: DuplicateAction,
+    /// Empty means the built-in User-Agent.
+    #[serde(default)]
+    pub user_agent: String,
+    /// Program run on every finished file; `{path}` is replaced by the file path. Empty means none.
+    #[serde(default)]
+    pub antivirus_cmd: String,
+    /// Folder for unfinished `.part` files; empty means next to the final file.
+    #[serde(default)]
+    pub temp_dir: String,
+    #[serde(default)]
+    pub use_server_date: bool,
+    #[serde(default = "default_true")]
+    pub remember_last_dir: bool,
+    #[serde(default)]
+    pub block_key: BlockKey,
+    #[serde(default = "default_true")]
+    pub ext_intercept: bool,
+    #[serde(default = "default_true")]
+    pub ext_video_button: bool,
+    #[serde(default)]
+    pub language: crate::i18n::Language,
+    /// Ask which queue to use after "Download Later".
+    #[serde(default = "default_true")]
+    pub queue_panel_on_later: bool,
+    /// Ask which queue to use after adding a group of files (Grabber).
+    #[serde(default = "default_true")]
+    pub queue_panel_on_batch: bool,
+    #[serde(default)]
+    pub antivirus_enabled: bool,
+    /// Only files with these extensions are scanned; empty means every file.
+    #[serde(default = "default_scan_extensions")]
+    pub antivirus_extensions: String,
+}
+
+pub fn default_scan_extensions() -> String {
+    "exe msi zip rar 7z iso apk scr bat cmd js vbs ps1 doc docx xls xlsx pdf".into()
+}
+
+/// What to do when the same address is added twice.
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default, Debug)]
+pub enum DuplicateAction {
+    #[default]
+    Ask,
+    AutoRename,
+    Skip,
+}
+
+/// Key that, held while clicking a link, keeps the browser from handing the download over.
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default, Debug)]
+pub enum BlockKey {
+    #[default]
+    Alt,
+    Ctrl,
+    Shift,
+    Off,
+}
+
+impl BlockKey {
+    pub fn name(self) -> &'static str {
+        match self {
+            BlockKey::Alt => "Alt",
+            BlockKey::Ctrl => "Ctrl",
+            BlockKey::Shift => "Shift",
+            BlockKey::Off => "None",
+        }
+    }
+}
+
+/// Set from the settings so the engine can use it without a reference to them.
+pub static USE_SERVER_DATE: AtomicBool = AtomicBool::new(false);
+
+/// The queue every download without an explicit queue belongs to.
+pub const MAIN_QUEUE_ID: u32 = 0;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct QueueDef {
+    pub id: u32,
+    pub name: String,
+}
+
+fn default_queues() -> Vec<QueueDef> {
+    vec![QueueDef { id: MAIN_QUEUE_ID, name: "Main download queue".into() }]
+}
+
+/// Login for sites that ask for a user name and password. On disk only `pass_enc` (DPAPI) is stored.
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+pub struct Credential {
+    pub pattern: String,
+    pub user: String,
+    #[serde(skip)]
+    pub pass: String,
+    #[serde(default)]
+    pub pass_enc: String,
+}
+
+/// Limit on how much may be downloaded in a time window.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Quota {
+    pub enabled: bool,
+    pub megabytes: u64,
+    pub hours: u64,
+}
+
+impl Default for Quota {
+    fn default() -> Self {
+        Quota { enabled: false, megabytes: 200, hours: 5 }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default, Debug)]
+pub enum ProxyMode {
+    #[default]
+    None,
+    System,
+    /// An automatic configuration script (`.pac`), resolved by Windows.
+    Pac,
+    Manual,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default, Debug)]
+pub enum ProxyKind {
+    #[default]
+    Http,
+    Socks5,
+}
+
+/// The password is never written to disk.
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+pub struct ProxyConfig {
+    pub mode: ProxyMode,
+    #[serde(default)]
+    pub kind: ProxyKind,
+    #[serde(default)]
+    pub pac_url: String,
+    pub host: String,
+    pub port: String,
+    pub user: String,
+    #[serde(skip)]
+    pub pass: String,
+}
+
+/// Max connections for one server (`*.example.com` allowed).
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+pub struct ServerLimit {
+    pub host: String,
+    pub connections: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+pub struct SoundSetting {
+    pub enabled: bool,
+    /// Empty means the system beep.
+    pub path: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+pub struct Sounds {
+    pub complete: SoundSetting,
+    pub failed: SoundSetting,
+    pub scheduler_start: SoundSetting,
+    pub scheduler_stop: SoundSetting,
+}
+
+fn default_true() -> bool { true }
+
+pub fn default_auto_extensions() -> String {
+    Category::ALL.iter().map(|c| c.extensions()).collect::<Vec<_>>().join(" ")
+}
+
+pub fn default_excluded_sites() -> String {
+    "*.update.microsoft.com download.windowsupdate.com siteseal.thawte.com ecom.cimetz.com *.voice2page.com karboom.io".into()
+}
+
+/// Renames, or copies then deletes when the target is on another drive.
+pub fn move_file_any(from: &std::path::Path, to: &std::path::Path) -> std::io::Result<()> {
+    if std::fs::rename(from, to).is_ok() {
+        return Ok(());
+    }
+    std::fs::copy(from, to)?;
+    std::fs::remove_file(from)
+}
+
+/// Gives the file the date the server reported (`Last-Modified`), when it can be read.
+pub fn apply_server_date(path: &std::path::Path, http_date: &str) {
+    let Ok(t) = chrono::DateTime::parse_from_rfc2822(http_date.trim()) else { return };
+    let secs = t.timestamp();
+    if secs <= 0 {
+        return;
+    }
+    let when = std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs as u64);
+    if let Ok(f) = std::fs::OpenOptions::new().write(true).open(path) {
+        let _ = f.set_modified(when);
+    }
+}
+
+pub fn host_of(url: &str) -> String {
+    let rest = url.split("://").nth(1).unwrap_or(url);
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+    let authority = authority.rsplit('@').next().unwrap_or("");
+    authority.split(':').next().unwrap_or("").to_ascii_lowercase()
+}
+
+/// `*.example.com` matches the domain and all of its subdomains.
+pub fn host_matches(pattern: &str, host: &str) -> bool {
+    let pattern = pattern.to_ascii_lowercase();
+    match pattern.strip_prefix("*.") {
+        Some(domain) => host == domain || host.ends_with(&format!(".{domain}")),
+        None => host == pattern,
+    }
 }
 
 impl Default for Settings {
@@ -224,11 +500,100 @@ impl Default for Settings {
             theme: Theme::Dark,
             run_on_startup: false,
             category_dirs: HashMap::new(),
+            show_start_dialog: true,
+            add_to_queue_only: false,
+            show_complete_dialog: true,
+            auto_extensions: default_auto_extensions(),
+            excluded_sites: default_excluded_sites(),
+            proxy: ProxyConfig::default(),
+            server_limits: Vec::new(),
+            sounds: Sounds::default(),
+            credentials: Vec::new(),
+            quota: Quota::default(),
+            queues: default_queues(),
+            global_speed_limit_kbps: 0,
+            duplicate_action: DuplicateAction::Ask,
+            user_agent: String::new(),
+            antivirus_cmd: String::new(),
+            temp_dir: String::new(),
+            use_server_date: false,
+            remember_last_dir: true,
+            block_key: BlockKey::Alt,
+            ext_intercept: true,
+            ext_video_button: true,
+            language: crate::i18n::Language::English,
+            queue_panel_on_later: true,
+            queue_panel_on_batch: true,
+            antivirus_enabled: false,
+            antivirus_extensions: default_scan_extensions(),
         }
     }
 }
 
 impl Settings {
+    /// True when a finished file should be handed to the scanner program.
+    pub fn should_scan(&self, file_name: &str) -> bool {
+        if !self.antivirus_enabled || self.antivirus_cmd.trim().is_empty() {
+            return false;
+        }
+        if self.antivirus_extensions.trim().is_empty() {
+            return true;
+        }
+        let Some((_, ext)) = file_name.rsplit_once('.') else { return false };
+        let ext = ext.to_ascii_lowercase();
+        self.antivirus_extensions.split_whitespace().any(|p| extension_matches(&p.to_ascii_lowercase(), &ext))
+    }
+
+    pub fn queue_name(&self, id: u32) -> String {
+        self.queues.iter().find(|q| q.id == id).map(|q| q.name.clone()).unwrap_or_else(|| "Main download queue".into())
+    }
+
+    /// Adds a queue and returns its id.
+    pub fn add_queue(&mut self, name: &str) -> u32 {
+        let id = self.queues.iter().map(|q| q.id).max().map_or(MAIN_QUEUE_ID, |m| m + 1);
+        self.queues.push(QueueDef { id, name: name.trim().to_string() });
+        id
+    }
+
+    /// Fills in passwords after loading (they are stored encrypted).
+    pub fn decrypt_secrets(&mut self) {
+        for c in &mut self.credentials {
+            c.pass = crate::secret::unprotect(&c.pass_enc);
+        }
+    }
+
+    /// A copy that is safe to write to disk: plain passwords are replaced by their encrypted form.
+    pub fn for_disk(&self) -> Settings {
+        let mut s = self.clone();
+        for c in &mut s.credentials {
+            c.pass_enc = crate::secret::protect(&c.pass);
+        }
+        s
+    }
+
+    /// Connection count for this URL: a matching server exception, else the default.
+    pub fn connections_for(&self, url: &str) -> u32 {
+        let host = host_of(url);
+        self.server_limits
+            .iter()
+            .find(|l| !l.host.trim().is_empty() && l.connections > 0 && host_matches(l.host.trim(), &host))
+            .map(|l| l.connections)
+            .unwrap_or(self.connections)
+    }
+
+    /// True when the file extension is in the user's auto-download list.
+    pub fn is_auto_type(&self, file_name: &str) -> bool {
+        let Some((_, ext)) = file_name.rsplit_once('.') else { return false };
+        let ext = ext.to_ascii_lowercase();
+        self.auto_extensions.split_whitespace().any(|p| extension_matches(&p.to_ascii_lowercase(), &ext))
+    }
+
+    /// True when the URL's site is in the "never download automatically" list.
+    pub fn is_excluded_site(&self, url: &str) -> bool {
+        let host = host_of(url);
+        !host.is_empty() && self.excluded_sites.split_whitespace().any(|p| host_matches(p, &host))
+    }
+
     /// One folder per category; respects per-category overrides.
     pub fn folder_for(&self, c: Category) -> PathBuf {
         if let Some(p) = self.category_dirs.get(c.name()) {
@@ -251,6 +616,76 @@ pub struct SavedState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn temp_path_uses_temp_dir_with_id_prefix_when_set() {
+        let mut d = Download { id: 7, url: String::new(), file_name: "a.zip".into(), save_dir: PathBuf::from("D:/dl"), category: Category::General, size: None, resumable: false, parts: vec![], status: Status::Stopped, last_try: String::new(), description: String::new(), connections: 1, speed_limit_kbps: None, in_queue: false, queue_id: 0, referer: String::new(), user_agent: String::new(), hls: None, temp_dir: None, server_date: None, message: String::new(), last_speed: 0.0, speed: 0.0, active_connections: 0 };
+        assert_eq!(d.temp_path(), PathBuf::from("D:/dl").join("a.zip.part"));
+        d.temp_dir = Some(PathBuf::from("T:/tmp"));
+        assert_eq!(d.temp_path(), PathBuf::from("T:/tmp").join("7-a.zip.part"));
+    }
+
+    #[test]
+    fn move_file_any_moves_within_a_drive_and_keeps_content() {
+        let dir = std::env::temp_dir().join(format!("idm-move-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let (a, b) = (dir.join("a.bin"), dir.join("b.bin"));
+        std::fs::write(&a, b"xyz").unwrap();
+        move_file_any(&a, &b).unwrap();
+        assert!(!a.exists());
+        assert_eq!(std::fs::read(&b).unwrap(), b"xyz");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn should_scan_needs_switch_command_and_matching_extension() {
+        let mut s = Settings::default();
+        assert!(!s.should_scan("a.exe"));
+        s.antivirus_enabled = true;
+        assert!(!s.should_scan("a.exe"), "no command yet");
+        s.antivirus_cmd = "scan {path}".into();
+        assert!(s.should_scan("setup.EXE"));
+        assert!(!s.should_scan("movie.mp4"));
+        s.antivirus_extensions = String::new();
+        assert!(s.should_scan("movie.mp4"));
+    }
+
+    #[test]
+    fn add_queue_gives_unique_ids_and_names() {
+        let mut s = Settings::default();
+        let a = s.add_queue(" Night ");
+        let b = s.add_queue("Work");
+        assert_ne!(a, b);
+        assert_eq!(s.queue_name(a), "Night");
+        assert_eq!(s.queue_name(999), "Main download queue");
+    }
+
+    #[test]
+    fn server_limit_overrides_default_connections_for_matching_host() {
+        let mut s = Settings::default();
+        s.server_limits.push(ServerLimit { host: "*.cdn.ir".into(), connections: 2 });
+        assert_eq!(s.connections_for("https://edge1.cdn.ir/a.rar"), 2);
+        assert_eq!(s.connections_for("https://other.com/a.rar"), s.connections);
+    }
+
+    #[test]
+    fn excluded_site_wildcard_matches_subdomains_only_for_star_patterns() {
+        let s = Settings::default();
+        assert!(s.is_excluded_site("https://x.update.microsoft.com/a.exe"));
+        assert!(s.is_excluded_site("http://download.windowsupdate.com/a.cab"));
+        assert!(!s.is_excluded_site("https://evil-download.windowsupdate.com.example.org/a.exe"));
+        assert!(!s.is_excluded_site("https://example.com/a.zip"));
+    }
+
+    #[test]
+    fn auto_type_uses_editable_extension_list() {
+        let mut s = Settings::default();
+        assert!(s.is_auto_type("a.ZIP"));
+        assert!(!s.is_auto_type("a.html"));
+        s.auto_extensions = "html".into();
+        assert!(s.is_auto_type("a.html"));
+        assert!(!s.is_auto_type("a.zip"));
+    }
 
     #[test]
     fn category_for_file_known_extension_matches_original_lists() {

@@ -1,13 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Iran Download Manager",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Send download links to Iran Download Manager",
   "permissions": [
     "contextMenus",
     "downloads",
     "tabs",
-    "storage"
+    "storage",
+    "cookies",
+    "webRequest"
   ],
   "host_permissions": [
     "http://127.0.0.1:6800/*",
@@ -19,7 +21,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["content.js", "video.js"],
       "run_at": "document_end"
     }
   ],
