@@ -352,10 +352,27 @@ pub const MAIN_QUEUE_ID: u32 = 0;
 pub struct QueueDef {
     pub id: u32,
     pub name: String,
+    #[serde(default)]
+    pub schedule: QueueSchedule,
+}
+
+/// Start/stop times of one queue. The main queue keeps using the global `Settings` fields so old settings files still work.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct QueueSchedule {
+    pub start_at_enabled: bool,
+    pub start_at: String,
+    pub stop_at_enabled: bool,
+    pub stop_at: String,
+}
+
+impl Default for QueueSchedule {
+    fn default() -> Self {
+        Self { start_at_enabled: false, start_at: "02:00".into(), stop_at_enabled: false, stop_at: "08:00".into() }
+    }
 }
 
 fn default_queues() -> Vec<QueueDef> {
-    vec![QueueDef { id: MAIN_QUEUE_ID, name: "Main download queue".into() }]
+    vec![QueueDef { id: MAIN_QUEUE_ID, name: "Main download queue".into(), schedule: QueueSchedule::default() }]
 }
 
 /// Login for sites that ask for a user name and password. On disk only `pass_enc` (DPAPI) is stored.
@@ -551,8 +568,19 @@ impl Settings {
     /// Adds a queue and returns its id.
     pub fn add_queue(&mut self, name: &str) -> u32 {
         let id = self.queues.iter().map(|q| q.id).max().map_or(MAIN_QUEUE_ID, |m| m + 1);
-        self.queues.push(QueueDef { id, name: name.trim().to_string() });
+        self.queues.push(QueueDef { id, name: name.trim().to_string(), schedule: QueueSchedule::default() });
         id
+    }
+
+    /// The four schedule fields of a queue (the main queue uses the global ones).
+    pub fn schedule_mut(&mut self, id: u32) -> (&mut bool, &mut String, &mut bool, &mut String) {
+        match self.queues.iter().position(|q| q.id == id) {
+            Some(i) if id != MAIN_QUEUE_ID => {
+                let s = &mut self.queues[i].schedule;
+                (&mut s.start_at_enabled, &mut s.start_at, &mut s.stop_at_enabled, &mut s.stop_at)
+            }
+            _ => (&mut self.start_at_enabled, &mut self.start_at, &mut self.stop_at_enabled, &mut self.stop_at),
+        }
     }
 
     /// Fills in passwords after loading (they are stored encrypted).

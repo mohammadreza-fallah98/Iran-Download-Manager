@@ -102,7 +102,7 @@ pub fn make_visuals(theme: Theme) -> egui::Visuals {
             v.faint_bg_color   = p.list_row_alt;
             v.override_text_color = Some(p.text);
             v.selection.bg_fill = p.list_selected;
-            v.selection.stroke  = egui::Stroke::new(1.0_f32, p.list_sel_border);
+            v.selection.stroke  = egui::Stroke::new(1.0_f32, p.text);
             v.widgets.noninteractive.fg_stroke = egui::Stroke::new(1.0_f32, p.text);
             v.widgets.inactive.fg_stroke       = egui::Stroke::new(1.0_f32, p.text);
             v.widgets.hovered.fg_stroke        = egui::Stroke::new(1.0_f32, p.text);
@@ -280,10 +280,7 @@ fn draw_icon(p: &egui::Painter, icon: Icon, c: Pos2, a: f32, theme: Theme) {
                 let d = vec2(ang.cos(), ang.sin());
                 p.line_segment([c + d * 11.0, c + d * 14.5], Stroke::new(1.5_f32, orange));
             }
-            // Moon crescent overlay for dark, nothing for light
-            if theme == Theme::Dark {
-                p.circle_filled(c + vec2(4.0, -4.0), 7.0, neon(Color32::from_rgb(28, 32, 42), a));
-            }
+            p.circle_filled(c, 4.0, fade(Color32::from_rgb(255, 160, 30), a));
         }
     }
 
@@ -323,6 +320,12 @@ pub fn folder_icon(p: &egui::Painter, at: Pos2, color: Color32) {
 
 /// One row of the category tree.
 pub fn tree_item(ui: &mut Ui, depth: usize, expandable: Option<bool>, color: Color32, label: &str, selected: bool, theme: Theme) -> (bool, bool) {
+    let (clicked, arrow, _) = tree_item_resp(ui, depth, expandable, color, label, selected, theme);
+    (clicked, arrow)
+}
+
+/// Same as `tree_item`, also returning the row response (for context menus).
+pub fn tree_item_resp(ui: &mut Ui, depth: usize, expandable: Option<bool>, color: Color32, label: &str, selected: bool, theme: Theme) -> (bool, bool, egui::Response) {
     let p = palette(theme);
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 22.0), Sense::click());
     let painter = ui.painter();
@@ -341,7 +344,7 @@ pub fn tree_item(ui: &mut Ui, depth: usize, expandable: Option<bool>, color: Col
     folder_icon(painter, pos2(x, cy), color);
     painter.text(pos2(x + 22.0, cy), egui::Align2::LEFT_CENTER, label, FontId::proportional(13.0), p.text);
     let arrow = resp.clicked() && resp.interact_pointer_pos().is_some_and(|pt| pt.x < x - 2.0);
-    (resp.clicked() && !arrow, arrow)
+    (resp.clicked() && !arrow, arrow, resp)
 }
 
 /// Progress / segment bar showing downloaded byte ranges.

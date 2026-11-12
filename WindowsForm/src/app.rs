@@ -142,6 +142,9 @@ pub struct App {
     drag_anchor: Option<u64>,
     last_clicked: Option<u64>,
     size_col_x: Option<(f32, f32)>,
+    /// Rows being dragged to a queue, and where the queue rows of the sidebar are on screen.
+    drag_items: Vec<u64>,
+    queue_rects: Vec<(u32, egui::Rect)>,
     queue_pick: Option<(Vec<u64>, u32)>,
     update_rx: Option<Receiver<Result<String, String>>>,
     refresh_check: Option<(u64, String, Receiver<Result<ProbeInfo, String>>)>,
@@ -176,7 +179,9 @@ pub struct App {
     progress_tab_limiter: HashSet<u64>,
     complete: Vec<u64>,
     options: Option<(Settings, OptionsTab)>,
-    scheduler: bool,
+    /// Queue edit window: (queue id, showing the files tab).
+    scheduler: Option<(u32, bool)>,
+    queue_sel: Option<u64>,
     grabber: Option<Grabber>,
     tell_friend: bool,
     about: bool,
@@ -385,6 +390,29 @@ fn move_file(from: &Path, to: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+const FIREFOX_ADDON_URL: &str = "https://addons.mozilla.org/en-US/firefox/addon/iran-download-manager";
+
+fn extensions_dir() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?;
+    [dir.join("Extensions"), dir.parent()?.join("Extensions")].into_iter().find(|p| p.is_dir())
+}
+
+/// Chrome has no store listing: show the packaged extension and open the page where it is loaded unpacked.
+fn open_chrome_extensions() {
+    if let Some(dir) = extensions_dir() {
+        let _ = std::process::Command::new("explorer").arg(dir.join("Chrome")).spawn();
+    }
+    let mut cmd = std::process::Command::new("cmd");
+    cmd.args(["/C", "start", "", "chrome", "chrome://extensions"]);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000);
+    }
+    let _ = cmd.spawn();
+}
+
 fn valid_time(t: &str) -> bool {
     chrono::NaiveTime::parse_from_str(t.trim(), "%H:%M").is_ok()
 }
@@ -436,6 +464,8 @@ impl App {
             drag_anchor: None,
             last_clicked: None,
             size_col_x: None,
+            drag_items: Vec::new(),
+            queue_rects: Vec::new(),
             queue_pick: None,
             update_rx: None,
             refresh_check: None,
@@ -457,7 +487,8 @@ impl App {
             progress_tab_limiter: HashSet::new(),
             complete: Vec::new(),
             options: None,
-            scheduler: false,
+            scheduler: None,
+            queue_sel: None,
             grabber: None,
             tell_friend: false,
             about: false,
@@ -761,13 +792,20 @@ impl App {
         let minute = chrono::Local::now().format("%H:%M").to_string();
         if minute != self.last_minute {
             if !self.last_minute.is_empty() {
-                if self.settings.start_at_enabled && minute == self.settings.start_at.trim() {
-                    sound::play(&self.settings.sounds.scheduler_start);
-                    self.start_queue();
-                }
-                if self.settings.stop_at_enabled && minute == self.settings.stop_at.trim() {
-                    sound::play(&self.settings.sounds.scheduler_stop);
-                    self.stop_queue();
+                let ids: Vec<u32> = self.settings.queues.iter().map(|q| q.id).collect();
+                for id in ids {
+                    let (start, stop) = {
+                        let (se, sa, pe, pa) = self.settings.schedule_mut(id);
+                        (*se && minute == sa.trim(), *pe && minute == pa.trim())
+                    };
+                    if start {
+                        sound::play(&self.settings.sounds.scheduler_start);
+                        self.start_queue_id(id);
+                    }
+                    if stop {
+                        sound::play(&self.settings.sounds.scheduler_stop);
+                        self.stop_queue_id(id);
+                    }
                 }
             }
             self.last_minute = minute;
@@ -961,7 +999,7 @@ impl App {
                     ui.close_menu();
                 }
                 if ui.button(tr("Scheduler...")).clicked() {
-                    self.scheduler = true;
+                    self.scheduler = Some((self.current_queue(), false));
                     ui.close_menu();
                 }
                 ui.separator();
@@ -990,6 +1028,16 @@ impl App {
                         }
                     }
                 });
+            });
+            ui.menu_button(tr("Extensions"), |ui| {
+                if ui.button(tr("Install Firefox extension")).clicked() {
+                    ui.ctx().open_url(egui::OpenUrl::new_tab(FIREFOX_ADDON_URL));
+                    ui.close_menu();
+                }
+                if ui.button(tr("Install Chrome extension")).on_hover_text(tr("Opens the extension folder and Chrome's extensions page: turn on Developer mode, then Load unpacked.")).clicked() {
+                    open_chrome_extensions();
+                    ui.close_menu();
+                }
             });
             ui.menu_button(tr("Help"), |ui| {
                 if ui.button(tr("Check for updates...")).clicked() {
@@ -1045,7 +1093,7 @@ impl App {
                 self.options = Some((self.settings.clone(), OptionsTab::General));
             }
             if widgets::tool_button(ui, Icon::Scheduler, &tr("Scheduler"), true, theme).clicked() {
-                self.scheduler = true;
+                self.scheduler = Some((self.current_queue(), false));
             }
             let cur_queue = self.current_queue();
             let cur_running = self.queues_running.contains(&cur_queue);
@@ -1123,12 +1171,50 @@ impl App {
         }
         if self.open_queues {
             let queues = self.settings.queues.clone();
+            let mut queue_action: Option<(u32, u8)> = None;
+            self.queue_rects.clear();
             for q in &queues {
                 let n = self.downloads.iter().filter(|h| { let d = h.d.lock().unwrap(); d.in_queue && d.queue_id == q.id }).count();
                 let label = if n > 0 { format!("{} ({n})", tr(&q.name)) } else { tr(&q.name) };
-                if widgets::tree_item(ui, 1, None, Color32::from_rgb(80, 150, 220), &label, self.view == View::Queue(q.id), theme).0 {
+                let (clicked, _, resp) = widgets::tree_item_resp(ui, 1, None, Color32::from_rgb(80, 150, 220), &label, self.view == View::Queue(q.id), theme);
+                if clicked {
                     self.view = View::Queue(q.id);
                 }
+                self.queue_rects.push((q.id, resp.rect));
+                let qid = q.id;
+                let running = self.queues_running.contains(&qid);
+                resp.context_menu(|ui| {
+                    let mut item = |ui: &mut egui::Ui, text: &str, enabled: bool, code: u8| {
+                        if ui.add_enabled(enabled, egui::Button::new(tr(text))).clicked() {
+                            queue_action = Some((qid, code));
+                            ui.close_menu();
+                        }
+                    };
+                    item(ui, "Start", !running && n > 0, 0);
+                    item(ui, "Stop", running, 1);
+                    ui.separator();
+                    item(ui, "Edit queue", true, 2);
+                    item(ui, "Scheduler", true, 3);
+                    item(ui, "Clear", n > 0 && !running, 4);
+                    ui.separator();
+                    item(ui, "Create new queue", true, 5);
+                });
+            }
+            match queue_action {
+                Some((id, 0)) => self.start_queue_id(id),
+                Some((id, 1)) => self.stop_queue_id(id),
+                Some((id, 2)) => self.scheduler = Some((id, true)),
+                Some((id, 3)) => self.scheduler = Some((id, false)),
+                Some((id, 4)) => {
+                    for h in &self.downloads {
+                        let mut d = h.d.lock().unwrap();
+                        if d.queue_id == id && !d.is_running() {
+                            d.in_queue = false;
+                        }
+                    }
+                }
+                Some((_, 5)) => self.queue_edit = Some((None, String::new())),
+                _ => {}
             }
             ui.horizontal(|ui| {
                 ui.add_space(14.0);
@@ -1307,8 +1393,45 @@ impl App {
         }
         // Drag over the rows with the mouse: everything between the first row and the one under the pointer
         if let Some(id) = drag_start {
-            self.drag_anchor = Some(id);
-            self.last_clicked = Some(id);
+            if self.selected.contains(&id) {
+                self.drag_items = self.selected.iter().copied().collect();
+            } else {
+                self.drag_anchor = Some(id);
+                self.last_clicked = Some(id);
+            }
+        }
+        if !self.drag_items.is_empty() {
+            let ctx = ui.ctx().clone();
+            let (down, pos) = ctx.input(|i| (i.pointer.primary_down(), i.pointer.latest_pos()));
+            let target = pos.and_then(|p| self.queue_rects.iter().find(|(_, r)| r.contains(p)).map(|(id, r)| (*id, *r)));
+            ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
+            ctx.request_repaint();
+            if down {
+                if let Some(p) = pos {
+                    if let Some((_, r)) = target {
+                        ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("drag_target"))).rect_stroke(r, 0.0, egui::Stroke::new(2.0_f32, Color32::from_rgb(0, 160, 255)), egui::StrokeKind::Inside);
+                    }
+                    egui::Area::new(egui::Id::new("drag_ghost")).order(egui::Order::Tooltip).fixed_pos(p + egui::vec2(14.0, 14.0)).interactable(false).show(&ctx, |ui| {
+                        egui::Frame::popup(ui.style()).show(ui, |ui| {
+                            ui.label(format!("{} {}", self.drag_items.len(), tr("file(s) - drop on a queue")));
+                        });
+                    });
+                }
+            } else {
+                if let Some((qid, _)) = target {
+                    for id in std::mem::take(&mut self.drag_items) {
+                        if let Some(h) = self.find(id) {
+                            let mut d = h.d.lock().unwrap();
+                            if d.status != Status::Complete {
+                                d.in_queue = true;
+                                d.queue_id = qid;
+                            }
+                        }
+                    }
+                    self.save_state();
+                }
+                self.drag_items.clear();
+            }
         }
         if let Some(anchor) = self.drag_anchor {
             let (down, pos) = ui.input(|i| (i.pointer.primary_down(), i.pointer.latest_pos()));
@@ -2422,48 +2545,123 @@ impl App {
     }
 
     fn scheduler_dialog(&mut self, ctx: &egui::Context) {
-        if !self.scheduler {
-            return;
-        }
+        let Some((mut qid, mut files_tab)) = self.scheduler else { return };
         let mut open = true;
         let mut start = false;
         let mut stop = false;
+        let mut file_action: Option<(u8, u64)> = None;
+        let queues = self.settings.queues.clone();
+        let members: Vec<(u64, String, String, String)> = self
+            .downloads
+            .iter()
+            .filter_map(|h| {
+                let d = h.d.lock().unwrap();
+                (d.in_queue && d.queue_id == qid).then(|| (d.id, d.file_name.clone(), d.size.map(widgets::fmt_size).unwrap_or_default(), status_text(&d)))
+            })
+            .collect();
         let s = &mut self.settings;
-        egui::Window::new(tr("Scheduler")).open(&mut open).collapsible(false).resizable(false).constrain(true).show(ctx, |ui| {
-            ui.label(RichText::new(tr("Main download queue")).strong());
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.checkbox(&mut s.start_at_enabled, tr("Start download at"));
-                ui.add(egui::TextEdit::singleline(&mut s.start_at).desired_width(60.0));
-                if !valid_time(&s.start_at) {
-                    ui.colored_label(Color32::RED, tr("use HH:MM"));
-                }
-            });
-            ui.horizontal(|ui| {
-                ui.checkbox(&mut s.stop_at_enabled, tr("Stop download at"));
-                ui.add(egui::TextEdit::singleline(&mut s.stop_at).desired_width(60.0));
-                if !valid_time(&s.stop_at) {
-                    ui.colored_label(Color32::RED, tr("use HH:MM"));
-                }
-            });
-            ui.horizontal(|ui| {
-                ui.label(tr("Files downloaded at the same time"));
-                ui.add(egui::DragValue::new(&mut s.max_at_once).range(1..=20));
-            });
-            ui.add_space(6.0);
-            ui.horizontal(|ui| {
-                start = ui.button(tr("Start now")).clicked();
-                stop = ui.button(tr("Stop")).clicked();
+        let sel = &mut self.queue_sel;
+        egui::Window::new(tr("Scheduler")).open(&mut open).collapsible(false).resizable(false).constrain(true).default_width(680.0).show(ctx, |ui| {
+            ui.horizontal_top(|ui| {
+                ui.vertical(|ui| {
+                    ui.set_width(170.0);
+                    ui.strong(tr("Queues"));
+                    for q in &queues {
+                        if ui.selectable_label(q.id == qid, tr(&q.name)).clicked() {
+                            qid = q.id;
+                        }
+                    }
+                });
+                ui.separator();
+                ui.vertical(|ui| {
+                    ui.set_min_width(460.0);
+                    ui.horizontal(|ui| {
+                        ui.selectable_value(&mut files_tab, false, tr("Scheduling"));
+                        ui.selectable_value(&mut files_tab, true, tr("Files in queue"));
+                    });
+                    ui.add_space(4.0);
+                    egui::Frame::group(ui.style()).fill(ui.visuals().faint_bg_color).inner_margin(egui::Margin::same(10)).show(ui, |ui| {
+                        ui.set_width(ui.available_width());
+                        if !files_tab {
+                            let (se, sa, pe, pa) = s.schedule_mut(qid);
+                            ui.horizontal(|ui| {
+                                ui.checkbox(se, tr("Start download at"));
+                                ui.add(egui::TextEdit::singleline(&mut *sa).desired_width(60.0));
+                                if !valid_time(sa) {
+                                    ui.colored_label(Color32::RED, tr("use HH:MM"));
+                                }
+                            });
+                            ui.horizontal(|ui| {
+                                ui.checkbox(pe, tr("Stop download at"));
+                                ui.add(egui::TextEdit::singleline(&mut *pa).desired_width(60.0));
+                                if !valid_time(pa) {
+                                    ui.colored_label(Color32::RED, tr("use HH:MM"));
+                                }
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label(tr("Files downloaded at the same time"));
+                                ui.add(egui::DragValue::new(&mut s.max_at_once).range(1..=20));
+                            });
+                            ui.add_space(6.0);
+                            ui.horizontal(|ui| {
+                                start = ui.button(tr("Start now")).clicked();
+                                stop = ui.button(tr("Stop")).clicked();
+                            });
+                        } else {
+                            egui::ScrollArea::vertical().max_height(220.0).auto_shrink([false, true]).show(ui, |ui| {
+                                egui::Grid::new("qfiles").striped(true).num_columns(3).spacing([14.0, 4.0]).show(ui, |ui| {
+                                    ui.strong(tr("File Name"));
+                                    ui.strong(tr("Size"));
+                                    ui.strong(tr("Status"));
+                                    ui.end_row();
+                                    for (id, name, size, status) in &members {
+                                        if ui.selectable_label(*sel == Some(*id), name).clicked() {
+                                            *sel = Some(*id);
+                                        }
+                                        ui.label(size);
+                                        ui.label(status);
+                                        ui.end_row();
+                                    }
+                                });
+                            });
+                            ui.add_space(6.0);
+                            let picked = sel.filter(|id| members.iter().any(|m| m.0 == *id));
+                            ui.horizontal(|ui| {
+                                if ui.add_enabled(picked.is_some(), egui::Button::new(tr("Move up"))).clicked() {
+                                    file_action = picked.map(|id| (0, id));
+                                }
+                                if ui.add_enabled(picked.is_some(), egui::Button::new(tr("Move down"))).clicked() {
+                                    file_action = picked.map(|id| (1, id));
+                                }
+                                if ui.add_enabled(picked.is_some(), egui::Button::new(tr("Remove from queue"))).clicked() {
+                                    file_action = picked.map(|id| (2, id));
+                                }
+                            });
+                        }
+                    });
+                });
             });
         });
         if start {
-            self.start_queue();
+            self.start_queue_id(qid);
         }
         if stop {
-            self.stop_queue();
+            self.stop_queue_id(qid);
         }
-        if !open {
-            self.scheduler = false;
+        if let Some((kind, id)) = file_action {
+            let in_q: Vec<usize> = (0..self.downloads.len()).filter(|i| { let d = self.downloads[*i].d.lock().unwrap(); d.in_queue && d.queue_id == qid }).collect();
+            let pos = in_q.iter().position(|i| self.downloads[*i].d.lock().unwrap().id == id);
+            match (kind, pos) {
+                (0, Some(p)) if p > 0 => self.downloads.swap(in_q[p], in_q[p - 1]),
+                (1, Some(p)) if p + 1 < in_q.len() => self.downloads.swap(in_q[p], in_q[p + 1]),
+                (2, Some(p)) => self.downloads[in_q[p]].d.lock().unwrap().in_queue = false,
+                _ => {}
+            }
+        }
+        if open {
+            self.scheduler = Some((qid, files_tab));
+        } else {
+            self.scheduler = None;
             self.save_state();
         }
     }
